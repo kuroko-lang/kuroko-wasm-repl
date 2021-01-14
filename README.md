@@ -16,4 +16,4 @@ The enter key in Ace is intercepted to implemented "smart" handling; a single li
 
 ## Build Instructions
 
-Check out this repository as a subdirectory of a checkout of the main kuroko repo, set up EMSDK, and run `./build.sh`, which should produce `index.js` and `index.wasm`. Deploy the entire directory to a web server.
+Check out this repository as a subdirectory `wasm` of a checkout of the main kuroko repo, set up EMSDK, and run `./build.sh`, which should produce `index.js` and `index.wasm`. Deploy the entire directory to a web server.

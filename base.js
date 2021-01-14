@@ -27,7 +27,7 @@ function enterCallback(editor) {
     newOutput.appendChild(document.createTextNode(' => ' + result));
     document.getElementById("container").appendChild(newOutput);
     /* and scroll to the bottom */
-    window.scrollTo(0,document.body.scrollHeight);
+    newOutput.scrollIntoView();
   }
   /* stop using this editor but leave it in the document for visual history */
   editor.setReadOnly(true);
@@ -49,6 +49,8 @@ function createEditor() {
     highlightActiveLine: false,
     showPrintMargin: false,
     useSoftTabs: true,
+    indentedSoftWrap: false,
+    wrap: true
   });
   editor.setTheme("ace/theme/sunsmoke");
   editor.setBehavioursEnabled(false);
@@ -56,7 +58,7 @@ function createEditor() {
   editor.commands.bindKey("Return", enterCallback);
   editor.focus();
   scrollToBottom = editor.renderer.on('afterRender', function() {
-    window.scrollTo(0,document.body.scrollHeight);
+    newDiv.scrollIntoView();
   });
   return editor;
 }
@@ -67,7 +69,7 @@ function addText(mode, text) {
   newOutput.appendChild(document.createTextNode(text));
   if (!text.length) newOutput.appendChild(document.createElement("wbr"));
   document.getElementById("container").appendChild(newOutput);
-  window.scrollTo(0,document.body.scrollHeight);
+  newOutput.scrollIntoView();
 }
 
 var Module = {

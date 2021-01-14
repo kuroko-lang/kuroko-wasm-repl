@@ -15,7 +15,7 @@ var scrollToBottom;
  */
 function enterCallback(editor) {
   var value = editor.getValue();
-  if (value.endsWith(":") || (value.split("\n").length > 1 && value.replace(/.*\n */g,"").length > 0)) {
+  if ((value.endsWith(":") || value.endsWith("\\")) || (value.split("\n").length > 1 && value.replace(/.*\n */g,"").length > 0)) {
     editor.insert("\n");
     return;
   }

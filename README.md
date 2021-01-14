@@ -13,3 +13,7 @@ This repository contains:
 The REPL provides an Ace.js instance to read a line (or multiple lines), passes them through the WASM interpreter, prints any `stdout` or `stderr` lines to new DOM elements, freezes the Ace editor and then creates a new one.
 
 The enter key in Ace is intercepted to implemented "smart" handling; a single line of text not ending in a colon will be executed; a line ending in a colon, or multiple lines not ending in a blank line will instead insert a line-feed normally.
+
+## Build Instructions
+
+Check out this repository as a subdirectory of a checkout of the main kuroko repo, set up EMSDK, and run `./build.sh`, which should produce `index.js` and `index.wasm`. Deploy the entire directory to a web server.

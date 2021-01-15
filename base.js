@@ -120,12 +120,11 @@ var Module = {
     const urlParams = new URLSearchParams(window.location.search);
     const codeParam = urlParams.get('c');
     if (codeParam) {
-      currentEditor.insert(codeParam);
+      currentEditor.insert(codeParam + '\n');
     }
     const runImmediately = urlParams.get('r');
     if (runImmediately == 'y') {
-      currentEditor.insert('\n');
-      enterCallback(currentEditor);
+      window.setTimeout(function() {enterCallback(currentEditor); }, 100);
     }
   }],
 

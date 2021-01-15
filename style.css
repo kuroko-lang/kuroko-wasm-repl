@@ -11,14 +11,32 @@ html body {
 #container > pre {
   color: #e6e6e6;
   width: auto;
-  margin: 4px;
+  margin: 0px;
   font-size: 17px;
   font-family: "Monaco", "Menlo", "Ubuntu Mono", "Consolas", "source-code-pro", monospace;
   white-space: pre-wrap;
+  counter-reset: line-no;
 }
 #container > .repl {
   color: rgb(100,100,100);
 }
 #container > .error {
   color: #de3535;
+}
+#container > .lines > .ace_line:target {
+  background-color: #2e2b2e;
+}
+#container > .lines > .ace_line > a::before {
+  counter-increment: line-no;
+  content: counter(line-no);
+  padding-right: 1em;
+  width: 3em;
+  display: inline-block;
+  text-align: right;
+  background-color: #000000;
+  color: #968b39;
+}
+#container > .lines > .ace_line:target > a::before {
+  background-color: #968b39;
+  color: #000000;
 }

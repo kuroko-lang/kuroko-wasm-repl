@@ -3,6 +3,7 @@ var krk_call; /* krk_call(string) -> string */
 var currentEditor; /* reference to newest Ace instance */
 var consoleEnabled = false; /* whether to print to the browser console */
 var scrollToBottom;
+var blockCounter = 0;
 
 /**
  * Ace command to perform smart enter-key handling.
@@ -19,7 +20,30 @@ function enterCallback(editor) {
     editor.insert("\n");
     return;
   }
+  /* Freeze the editor. */
+  editor.setReadOnly(true);
+  editor.renderer.$cursorLayer.element.style.display = "none";
+  editor.renderer.off("afterRender", scrollToBottom);
+  var frozenEditor = document.createElement("pre");
+  frozenEditor.className = "lines";
+  var lines = editor.container.getElementsByClassName("ace_line");
+  var len = lines.length;
+  for (var i = 0; i < len; i = i + 1) {
+    /* because detaching this apparently pops it ? */
+    var child = lines[0];
+    var lineNumber = document.createElement("a");
+    lineNumber.href = "#_" + blockCounter + "_" + (i + 1);
+    child.id = "_" + blockCounter + "_" + (i + 1);
+    child.prepend(lineNumber);
+    frozenEditor.appendChild(child);
+  }
+  blockCounter++;
+  editor.container.remove();
+  editor.destroy();
+  document.getElementById("container").appendChild(frozenEditor);
+
   result = krk_call(value);
+
   if (result != "") {
     /* If krk_call gave us a result that wasn't empty, add new repl output node. */
     let newOutput = document.createElement("pre");
@@ -30,9 +54,6 @@ function enterCallback(editor) {
     newOutput.scrollIntoView();
   }
   /* stop using this editor but leave it in the document for visual history */
-  editor.setReadOnly(true);
-  editor.renderer.$cursorLayer.element.style.display = "none";
-  editor.renderer.off("afterRender", scrollToBottom);
   currentEditor = createEditor();
 }
 

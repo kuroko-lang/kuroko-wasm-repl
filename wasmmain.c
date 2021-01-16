@@ -246,6 +246,7 @@ int main() {
 	BUNDLED(dis);
 	BUNDLED(os);
 	BUNDLED(time);
+	BUNDLED(math);
 
 	emscripten_run_script("Module.krkb = [];");
 

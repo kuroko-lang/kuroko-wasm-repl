@@ -1,0 +1,18 @@
+from js import exec, JSObject
+
+def writeHTML(string):
+    exec("var __tmp=document.createElement('div'); __tmp.innerHTML = '{}'; document.getElementById('container').appendChild(__tmp);".format(string))
+
+def write(string):
+    writeHTML('<div style="color: black; padding: 10px; margin: 20px; background-color: white; border-radius: 4px;">{}</div>'.format(string))
+
+let reserved = ' !#$&\'()*+,/:;=?@[]\"\n-%.<>\\^_`{}~'
+
+def hex2(i):
+    let h = hex(i)[2:]
+    if len(h) == 1: return '0' + h
+    return h
+
+def urlencode(s):
+    return ''.join(['%'+hex2(ord(c)) if c in reserved else c for c in s])
+

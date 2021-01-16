@@ -104,7 +104,7 @@ var Module = {
     FS.mkdir('/usr/local/lib/kuroko');
 
     /* Load source modules from web server */
-    const modules = ["help.krk","collections.krk","json.krk","string.krk"];
+    const modules = ["help.krk","collections.krk","json.krk","string.krk","web.krk"];
     for (const i in modules) {
       FS.createPreloadedFile('/usr/local/lib/kuroko', modules[i], modules[i], 1, 0)
     }

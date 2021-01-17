@@ -93,6 +93,16 @@ function addText(mode, text) {
   newOutput.scrollIntoView();
 }
 
+function insertNext() {
+  currentEditor.setValue('next()',1)
+  window.setTimeout(function() { enterCallback(currentEditor); }, 100);
+}
+
+function insertThis(e) {
+  currentEditor.setValue(e.innerText,1);
+  window.setTimeout(function() { enterCallback(currentEditor); }, 100);
+}
+
 var Module = {
   preRun: [], /* We only do interesting things after the VM has initialized. */
 
@@ -114,6 +124,8 @@ var Module = {
 
     /* Print some startup text. */
     krk_call("import kuroko\nprint('Kuroko',kuroko.version,kuroko.builddate,'(wasm)')\nkuroko.set_clean_output(True)\n");
+    krk_call("print('Type `tutorial()` for an interactive guide, `license` for copyright information.')\n");
+    krk_call("def tutorial():\n from web import tutorial as actual\n actual()\n");
 
     /* Start the first repl line editor */
     currentEditor = createEditor();

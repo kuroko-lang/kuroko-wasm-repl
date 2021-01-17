@@ -1,5 +1,6 @@
 html body {
   margin: 0px;
+  font-family: -apple-system, "Segoe UI", "Helvetica", "Arial", sans-serif;
 }
 .terminal-container {
   margin: 0px;
@@ -23,6 +24,9 @@ html body {
 #container > .error {
   color: #de3535;
 }
+#container > .lines > .ace_line > a {
+  padding-right: 2px;
+}
 #container > .lines > .ace_line:target {
   background-color: #2e2b2e;
 }
@@ -30,7 +34,7 @@ html body {
   counter-increment: line-no;
   content: counter(line-no);
   padding-right: 1em;
-  width: 3em;
+  width: 2em;
   display: inline-block;
   text-align: right;
   background-color: #000000;
@@ -39,4 +43,44 @@ html body {
 #container > .lines > .ace_line:target > a::before {
   background-color: #968b39;
   color: #000000;
+}
+
+.inset {
+  color: black;
+  padding: 10px;
+  margin: 20px;
+  background-color: #e6e6e6;
+  border-radius: 4px;
+}
+.inset > h1 {
+  font-size: 18px;
+  font-weight: bold;
+  padding: 0;
+  margin-bottom: 16px;
+}
+.inset > p {
+  font-size: 16px;
+  padding: 0;
+  margin-top: 0px;
+  margin-bottom: 16px;
+  line-height: 1.5;
+  word-wrap: break-word;
+}
+
+.inset code {
+  border-radius: 3px;
+  background-color: #1f1f1f;
+  color: #e6e6e6;
+  padding: 2px;
+  font-size: 17px;
+  font-family: "Monaco", "Menlo", "Ubuntu Mono", "Consolas", "source-code-pro", monospace;
+}
+.inset a.codelink {
+  text-decoration: none;
+  color: #e6e6e6;
+}
+.inset p.nextbutton {
+  text-align: right;
+  padding: 0px;
+  margin: 0px;
 }

@@ -5,21 +5,17 @@ var consoleEnabled = false; /* whether to print to the browser console */
 var scrollToBottom;
 var blockCounter = 0;
 
+document.getElementById("container").innerText = "";
+
 /**
- * Ace command to perform smart enter-key handling.
- *
- * If the text ends in a colon, or if there are multiple lines and the last line
- * of the editor is not blank or all spaces, a line feed will be inserted at the
- * current cursor position. Otherwise, code will be executed and this editor
- * will be marked readonly and a new one will be created after the interpreter
- * returns.
+ * Run the code in the current Ace editor.
+ * Freezes the editor by extracting its lines and putting them back in the DOM,
+ * destroys the editor, runs the code, and if it returns a value, prints it
+ * into a new element in gray, like the command-line repl, then scrolls down
+ * and sets up a new Ace instance.
  */
-function enterCallback(editor) {
+function runCode(editor) {
   var value = editor.getValue();
-  if ((value.endsWith(":") || value.endsWith("\\")) || (value.split("\n").length > 1 && value.replace(/.*\n */g,"").length > 0)) {
-    editor.insert("\n");
-    return;
-  }
   /* Freeze the editor. */
   editor.setReadOnly(true);
   editor.renderer.$cursorLayer.element.style.display = "none";
@@ -55,6 +51,25 @@ function enterCallback(editor) {
   }
   /* stop using this editor but leave it in the document for visual history */
   currentEditor = createEditor();
+
+}
+
+/**
+ * Ace command to perform smart enter-key handling.
+ *
+ * If the text ends in a colon, or if there are multiple lines and the last line
+ * of the editor is not blank or all spaces, a line feed will be inserted at the
+ * current cursor position. Otherwise, code will be executed and this editor
+ * will be marked readonly and a new one will be created after the interpreter
+ * returns.
+ */
+function enterCallback(editor) {
+  var value = editor.getValue();
+  if ((value.endsWith(":") || value.endsWith("\\")) || (value.split("\n").length > 1 && value.replace(/.*\n */g,"").length > 0)) {
+    editor.insert("\n");
+    return;
+  }
+  runCode(editor);
 }
 
 /**
@@ -95,48 +110,54 @@ function addText(mode, text) {
 
 function insertNext() {
   currentEditor.setValue('next()',1)
-  window.setTimeout(function() { enterCallback(currentEditor); }, 100);
+  window.setTimeout(function() { runCode(currentEditor); }, 100);
 }
 
 function insertThis(e) {
   currentEditor.setValue(e.innerText,1);
-  window.setTimeout(function() { enterCallback(currentEditor); }, 100);
+  window.setTimeout(function() { runCode(currentEditor); }, 100);
 }
 
 var Module = {
-  preRun: [], /* We only do interesting things after the VM has initialized. */
-
-  postRun: [function() {
-    /* XXX: Does this do recursive directory creation? */
+  preRun: [function() {
     FS.mkdir('/usr');
     FS.mkdir('/usr/local');
     FS.mkdir('/usr/local/lib');
     FS.mkdir('/usr/local/lib/kuroko');
+    FS.mkdir('/usr/local/lib/kuroko/syntax');
+    FS.mkdir('/usr/local/lib/kuroko/foo');
+    FS.mkdir('/usr/local/lib/kuroko/foo/bar');
 
     /* Load source modules from web server */
-    const modules = ["help.krk","collections.krk","json.krk","string.krk","web.krk"];
+    const modules = ["help.krk","collections.krk","json.krk","string.krk","web.krk","dummy.krk"];
     for (const i in modules) {
-      FS.createPreloadedFile('/usr/local/lib/kuroko', modules[i], modules[i], 1, 0)
+      FS.createPreloadedFile('/usr/local/lib/kuroko', modules[i], "res/" + modules[i], 1, 0)
     }
-
+    FS.createPreloadedFile('/usr/local/lib/kuroko/syntax', '__init__.krk', 'res/init.krk', 1, 0)
+    FS.createPreloadedFile('/usr/local/lib/kuroko/syntax', 'highlighter.krk', 'res/highlighter.krk', 1, 0)
+    FS.createPreloadedFile('/usr/local/lib/kuroko/foo', '__init__.krk', 'res/init.krk', 1, 0)
+    FS.createPreloadedFile('/usr/local/lib/kuroko/foo/bar', '__init__.krk', 'res/init.krk', 1, 0)
+    FS.createPreloadedFile('/usr/local/lib/kuroko/foo/bar', 'baz.krk', 'res/baz.krk', 1, 0)
+  }],
+  postRun: [function() {
     /* Bind krk_call */
     krk_call = Module.cwrap('krk_call', 'string', ['string']);
 
     /* Print some startup text. */
     krk_call("import kuroko\nprint('Kuroko',kuroko.version,kuroko.builddate,'(wasm)')\nkuroko.set_clean_output(True)\n");
     krk_call("print('Type `tutorial()` for an interactive guide, `license` for copyright information.')\n");
-    krk_call("def tutorial():\n from web import tutorial as actual\n actual()\n");
+    krk_call("def tutorial(n=0):\n from web import tutorial as actual\n actual(n)\n");
 
     /* Start the first repl line editor */
     currentEditor = createEditor();
     const urlParams = new URLSearchParams(window.location.search);
     const codeParam = urlParams.get('c');
     if (codeParam) {
-      currentEditor.insert(codeParam + '\n');
+      currentEditor.insert(codeParam);
     }
     const runImmediately = urlParams.get('r');
     if (runImmediately == 'y') {
-      window.setTimeout(function() {enterCallback(currentEditor); }, 100);
+      window.setTimeout(function() {runCode(currentEditor); }, 100);
     }
   }],
 

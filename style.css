@@ -75,6 +75,13 @@ html body {
   font-size: 17px;
   font-family: "Monaco", "Menlo", "Ubuntu Mono", "Consolas", "source-code-pro", monospace;
 }
+.inset code.multiline {
+  border-radius: 3px;
+  background-color: #1f1f1f;
+  display: inline-block;
+  white-space: pre-wrap;
+  line-height: 19px;
+}
 .inset a.codelink {
   text-decoration: none;
   color: #e6e6e6;

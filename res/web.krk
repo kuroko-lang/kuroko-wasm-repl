@@ -1,0 +1,735 @@
+import fileio
+import syntax.highlighter
+from js import exec, JSObject
+
+def writeHTML(string):
+    exec("var __tmp=document.createElement('div'); __tmp.innerHTML = `{}`; document.getElementById('container').appendChild(__tmp);".format(string))
+
+def write(string):
+    writeHTML('<div class="inset">{}</div>'.format(string))
+
+let reserved = ' !#$&\'()*+,/:;=?@[]\"\n-%.<>\\^_`{}~'
+
+def hex2(i):
+    let h = hex(i)[2:]
+    if len(h) == 1: return '0' + h
+    return h
+
+def urlencode(s):
+    return ''.join(['%'+hex2(ord(c)) if c in reserved else c for c in s])
+
+def nextButton():
+    return '''<p class="nextbutton"><a onclick="insertNext()" href="#" class="codelink"><code>next()</code></a></p>'''
+
+let escapes = {
+    '<': '&lt;',
+    '>': '&gt;',
+    '\\': '\\\\', # This is for Javascript reasons.
+    '`': '\\`',
+}
+
+def escapeAngles(input):
+    return ''.join([(escapes[c] if c in escapes else c) for c in input])
+
+let mappings = {
+    syntax.highlighter.FLAG_NONE:      '{}',
+    syntax.highlighter.FLAG_KEYWORD:   '<span class="ace_keyword">{}</span>',
+    syntax.highlighter.FLAG_STRING:    '<span class="ace_string">{}</span>',
+    syntax.highlighter.FLAG_COMMENT:   '<span class="ace_comment">{}</span>',
+    syntax.highlighter.FLAG_TYPE:      '<span class="ace_storage">{}</span>',
+    syntax.highlighter.FLAG_PRAGMA:    '<span class="ace_storage">{}</span>',
+    syntax.highlighter.FLAG_NUMERAL:   '<span class="ace_numeric">{}</span>',
+    syntax.highlighter.FLAG_ERROR:     '{}',
+    syntax.highlighter.FLAG_DIFFPLUS:  '{}',
+    syntax.highlighter.FLAG_DIFFMINUS: '{}',
+    syntax.highlighter.FLAG_NOTICE:    '{}',
+    syntax.highlighter.FLAG_BOLD:      '<b>{}</b>',
+    syntax.highlighter.FLAG_LINK:      '<span class="">{}</span>',
+    syntax.highlighter.FLAG_ESCAPE:    '<span class="ace_escape">{}</span>',
+}
+
+def codeSample(code):
+    let highlighter = syntax.highlighter.KurokoHighlighter(code)
+    highlighter.highlight()
+    let classes = ' class="multiline"' if '\n' in code else ''
+    let processed = highlighter.process()
+    let out = '\n'.join([''.join([mappings[f].format(escapeAngles(w)) for w, f in line]) for line in processed])
+    return '''<a onclick="insertThis(this)" href="#" class="codelink"><code{}>{}</code></a>'''.format(classes, out)
+
+let tutorials = ['''
+<h1>Welcome to Kuroko!</h1>
+<p>Kuroko is a bytecode-interpreted, dynamic, strongly-typed language with syntax similar to Python.</p>
+<p>Before we begin, here's how this tutorial will work:</p>
+<p>Each step will explain a concept and allow you to try it out in the repl. When you're ready to move to the next step, type <code>next()</code></p>
+<p>Any time you see a code sample like that in the tutorial, you can click it to automatically run it.</p>
+<p><i>This tutorial is a work-in-progress / proof-of-concept.</i></p>
+''','''
+<h1>Let's start with the basics...</h1>
+<p>Every programming tutorial starts with 'hello world', so let's start there! The <code>print()</code> function prints values.</p>
+<p><code>print("Hello, world!")</code></p>
+<p>The repl will automatically print the value of the last statement, so we can also just do this:</p>
+<p><code>"Hello, world!"</code></p>
+<p>Throughout this tutorial, we'll use <code>print()</code> to see results as we go through each example.</p>
+<p>When you're ready to continue, just type <code>next()</code>!
+''','''
+<h1>More on Printing...</h1>
+<p>The <code>print()</code> function accepts an arbitrary number of arguments and will print each argument as a string, separated by spaces and ending in a line feed.</p>
+<p><code>print("hello","world",42,3.1415926)</code></p>
+<p>You can customize the separation and ending by passing <i>keyword arguments</i>:</p>
+<p><code>print("hello","world",42,3.1415926,sep=", ",end="!!!\\n")</code></p>
+<p>Don't forget to type <code>next()</code> to continue to the next step in the guide.</p>
+<p><i><b>Note:</b> In this in-browser REPL, text will not be output until a line feed is printed.
+When using Kuroko elsewhere, there may be times when you want to print without outputting a line feed - "end" can be set to an empty string to achive this.</i></p>
+''','''
+<h1>Basic Types</h1>
+<p>Kuroko's type system is similar to other dynamic languages like Python, JavaScript, <a href="https://craftinginterpreters.com/" target="_blank">Lox</a>, and so on.</p>
+<p>The type of a variable is not specified when it is declared and is instead determined at runtime by its <i>attributes</i>.</p>
+<p>The basic types in Kuroko are <i>integers</i> (like <code>1</code> or <code>42</code> or <code>29489352</code>),
+<i>floats</i> (like <code>3.14159</code> or <code>-0.33333333</code>), <i>bools</i> (<code>True</code> and <code>False</code>), and the special value <code>None</code>.</p>
+<p><code>print(1 + 2 + 3)</code></p>
+<p>When integer values are used in arithmetic operations, such as division, the result will be an integer as well:</p>
+<p><code>print(1 / 2)</code></p>
+<p>Basic operations like this try to maintain the types of their inputs. To get so-called <i>"true division"</i>, a float value can be used for one or the other operand:</p>
+<p><code>print(1 / 2.0)</code></p>
+<p>Some types can also be <i>cast</i> to other types. Type casting in Kuroko works like in Python, with types having constructors that may be able to take other types and convert them:</p>
+<p><code>print(float(1) / float(2))</code></p>
+<p>From here on out, the button to see the next slide will appear on the right side on all cards.</p>
+''','''
+<h1>Objects</h1>
+<p>In addition to the basic value types, Kuroko also has <i>objects</i>. Objects are more complicated values like strings, functions, classes, instances, and collections.</p>
+<p>While basic types are <i>passed by value</i> to function calls, objects are <i>passed by reference</i> and may be mutable. We'll go through each of the standard object types as we progress through the guide.</p>
+''','''
+<h1>Strings</h1>
+<p>We've already seen two types of objects in Kuroko: Functions and strings. We'll talk a bit about the latter first.</p>
+<p>Strings are represented in code through quotation marks. Both single and double quotation marks can be used to denote a string (but be sure to use the same mark on both sides).</p>
+<p>Additionally, a set of three single quotation marks or three double quotation marks represents a <i>big string</i>.
+In regular strings, line feeds are not accepted, but <i>big strings</i> can run multiple lines and contain line feeds that will be included in their values.</p>
+<p>Strings can also contain a variety of <i>escape sequences</i>, though some of these won't work here in the web REPL:</p>
+<ul>
+<li><code>"\\a"</code>: ASCII <i>bell</i> character (codepoint U+0007)</li>
+<li><code>"\\b"</code>: backspace</li>
+<li><code>"\\f"</code>: form feed</li>
+<li><code>"\\n"</code>: line feed</li>
+<li><code>"\\r"</code>: carriage return</li>
+<li><code>"\\t"</code>: horizontal tab</li>
+<li><code>"\\v"</code>: vertical tab</li>
+<li><code>"\\["</code>: ANSI escape (codepoint U+001B)</li>
+<li><code>"\\x42"</code>: A two-character hexadecimal sequence, representing a codepoint value below U+0100.</li>
+<li><code>"\\u3042"</code>: A four-character hexadecimal sequence, representing a codepoint value below U+10000.</li>
+</ul>
+''','''
+<h1>Operations on Strings</h1>
+<p>Strings in Kuroko are <i>immutable sequences of Unicode codepoints</i>. They cannot be modified in-place, but operations like + will create new strings.</p>
+<p><code>print("hello " + "world!")</code></p>
+<p>Strings have several inherent properties, such as their length which can be found using the built-in function <code>len</code>:</p>
+<p><code>print(len("hello world"))</code></p>
+<p>Strings can also be <i>subscripted</i> (or <i>indexed into</i>) to retrieve individual codepoints:</p>
+<p><code>print("hello"[1])</code></p>
+<p>Subscripting a string returns a "string of length 1". Since strings consist of <i>Unicode codepoints</i>, a string of Japanese text like <code>"日本語"</code> has a length of 3:</p>
+<p><code>print(len("日本語"))
+print("日本語"[1])</code></p>
+''','''
+<h1>Byte Strings</h1>
+<p>In addition to Unicode strings, Kuroko also has a <code>bytes</code> type for representing arrays of 8-bit values.
+Unicode strings can be converted to UTF-8 bytes objects and vice-versa with the <code>str.encode</code> and <code>bytes.decode</code> methods:</p>
+<p><code>print('テスト'.encode())</code></p>
+<p>Byte strings can be created in code by prefixing a "b" to a string:</p>
+<p><code>print(b'\\xe3\\x83\\x86\\xe3\\x82\\xb9\\xe3\\x83\\x88'.decode())</code></p>
+<p>When a bytes object is subscripted, the value returned is an integer:</p>
+<p><code>print(b'test'[0])</code></p>
+''','''
+<h1><code>if</code> Statements and Blocks</h1>
+<p>Much like in Python, code in Kuroko is structured into <i>blocks</i> denoted by indentation, rather than by squiggly braces or infinitely nested parentheses. The simplest block is an <code>if</code> statement:</p>
+<p><code>if 2 > 1:
+    print("Of course it is!")</code></p>
+<p>Blocks should be indented with spaces, and spacing must be consistent and strictly ordered (each nested block must be indented more than its enclosing block).</p>
+<p><code>if</code> statements can be paired with an <code>else</code> statement:</p>
+<p><code>if 1 > 2:
+    print("That would be silly.")
+else:
+    print("So let's print this instead.")</code></p>
+<p><code>if</code> statements may also be paired with any number of <code>else if</code> statements (or <code>elif</code> for compatibility with Python).</p>
+''','''
+<h1>Variables</h1>
+<p>Now that we know a bit about some of the basic types and how we can perform operations on them and print them, let's talk about giving them names.</p>
+<p>Unlike in Python, variables in Kuroko are <i>explicitly declared</i> and have traditional "block scoping". To declare variables, use the <code>let</code> keyword:</p>
+<p><code>let foo</code></p>
+<p>When a variable is declared like this, without an assignment to provide an initial value, it will have the value <code>None</code> when referenced later.</p>
+<p><code>print(foo) # Make sure you ran the first example before this one!</code></p>
+<p><code>let foo = "bar"
+print(foo)</code></p>
+''','''
+<h1>Multiple Declarations</h1>
+<p>Multiple variables can be declared together like this:</p>
+<p><code>let a, b, c = 1, "foo", True</code></p>
+<p>This syntax can also be used to <i>unpack</i> some sequence types. Remember that strings are <i>sequences of Unicode codepoints</i>:</p>
+<p><code>let a, b, c = "くろこ"
+print(a,b,c,sep=" - ")</code></p>
+''','''
+<h1>Assignments</h1>
+<p>Once a variable has been declared, it may be assigned to where ever its name is valid:</p>
+<p><code>let x = 1
+x = 2
+print(x)
+x = 3
+print(x)</code></p>
+<p>Assignments are also <i>expressions</i> in Kuroko, taking the value of the result of the assignment.</p>
+<p><code>print((x = x + 1))</code></p>
+<p>Note that we must wrap the assignment in parentheses or it will be interpreted in a function call as a keyword argument, which we'll get to later.</p>
+<p>Kuroko also has shortcut operators like <code>x += 1</code> and <code>x++</code></p>
+''','''
+<h1>Functions</h1>
+<p>We have already seen multiple functions in use, including <code>print</code> and <code>len</code> - let's find out how to make our own.
+Functions in Kuroko are defined with the <code>def</code> keyword:</p>
+<p><code>def greet(name):
+    print("Hello, " + name + "!")
+greet("user")
+</code></p>
+<p>When we define a function, we give it a name and a list of arguments. Those arguments can be assigned default values:</p>
+<p><code>def greet(name="world"):
+    print("Hello, " + name + "!")
+greet()
+greet("user")</code></p>
+<p>Default arguments can be omitted when the function is called and will be set the value used in the function's definition if they are missing.</p>
+<p><i><b>Note:</b> In Python, default arguments are evaluated once when the function is defined,
+which can lead to potentially unexpected behavior if a mutable value like a list is used.
+In Kuroko, default arguments are evaluated when the function is called.</i></p>
+''','''
+<h1>Scoping in Kuroko</h1>
+<p>Since we've seen how to declare variables, create blocks, and define functions, let's take a brief detour to understand what <i>block scoping</i> means.</p>
+<p>When a variable name is referenced, there are multiple places where Kuroko's compiler and interpreter may look for it.
+In particular, there are two different kinds of variables we can create with the code structures we've seen thus far: globals and locals.</p>
+<p>When we declare a variable within a block, such as the body of an <code>if</code> statement or a function, we are creating <i>local variables</i>. The names we give
+to these variables are only usable within the block in which they are declared (or a block inside of that block), and only after the declaration statement.</p>
+<p>When we declare a variable outside of a block, meaning at the top level of a file or in the REPL, we are creating <i>global variables</i>.
+The names of global variables are used by the interpreter to find their values through hash table lookups at runtime.</p>
+''','''
+<p><code>let globalVal = 42
+print(globalVal)
+if True:
+    let localVal = 3
+    globalVal = 123
+    print(localVal)
+print(globalVal)</code></p>
+<p>If we try to <code>print(localVal)</code> outside of the <code>if</code> block, the compiler will treat it as a global and the interpreter will fail to find it.</p>
+<p>If we nest multiple blocks within each other, each inner block may declare its own local variables with the same names used in outer blocks.<p>
+<p><code>if True:
+    let var = 1
+    if True:
+        let var = 2
+        print(var)
+    print(var)</code></p>
+''','''
+<h1>Closures</h1>
+<p>Functions in Kuroko are inherently closures and <i>capture</i> local variables from their enclosing scopes.</p>
+<p>When a function references a local from another function in which its definition is nested (or variables declared within a block),
+the referenced variables will continue to "live" in the heap beyond the execution of their original scope context.</p>
+<p>If we define a function which declares a local variable and then define an inner function which references that variable,
+such as in the example below, each call to the other function will create a new instance of the variable and a new instance of the inner function.
+When the inner function is returned, it will take with it the variable it captured from the outer function and further calls
+to this instance of the inner function will use that variable.</p>
+<p><code>def foo():
+    let i = 1 # Local to this call to foo
+    def bar():
+        print(i)
+        i++
+    return bar # Produces a closure
+let a, b, c = foo(), foo(), foo()
+a()
+b()
+c()
+a()
+a()
+a()</code></p>
+<p><i><b>Note:</b> Functions also maintain a reference to the global scope in which they were defined, and will use the same globals table when called, but these values already live on the heap and are not captured by the function.</i></p>
+''','''
+<h1>Objects and Classes</h1>
+<p>Objects and classes in Kuroko work a lot like Python or similar languages in that they have an arbitrary and mutable set of fields, which may be methods or other values.</p>
+<p>To create a basic object without methods, the <code>object</code> class is provided:</p>
+<p><code>let o = object()
+o.foo = "bar"
+print(o.foo)</code></p>
+<p>To supply methods, we define a class:</p>
+<p><code>class Foo():
+    def printFoo():
+        print(self.foo)
+let o = Foo()
+o.foo = "bar"
+o.printFoo()</code></p>
+<p>The <code>self</code> keyword is implicit in all methods and does not need to be supplied in the argument list, but you may add it for compatibility with Python.</p>
+<p>Classes can also define fields, which can be accessed from the class or through an instance:</p>
+<p><code>class Foo():
+    bar = "baz"
+    def printBar(self):
+        print(self.bar)
+let o = Foo()
+o.printBar()
+print(Foo.bar)</code></p>
+<p>When a class is <i>instantiated</i>, if it has a method with the special name <code>__init__</code>, that method will be called automatically on the newly created instance.</p>
+<p><code>class Foo():
+    def __init__(bar):
+        self.foo = bar
+    def printFoo():
+        print(self.foo)
+let o = Foo("bar")
+o.printFoo()</code></p>
+''','''
+<h1>Inheritence</h1>
+<p>Classes may <i>inherit</i> methods and fields from a super class:</p>
+<p><code>class Foo():
+    def __init__():
+        self.type = "foo"
+    def printType():
+        print(self.type)
+
+class Bar(Foo):
+    def __init__():
+        self.type = "bar"
+
+let bar = Bar()
+bar.printType()</code></p>
+''','''
+<p>Methods can refer to the super class with the <code>super</code> keyword, which should be called as a function with no arguments, as in new-style Python code:</p>
+<p><code>class Foo():
+    def __init__():
+        self.type = "foo"
+    def printType():
+        print(self.type)
+
+class Bar(Foo):
+    def __init__():
+        self.type = "bar"
+    def printType():
+        super().printType()
+        print("Also, I enjoy long walks on the beach.")
+
+let bar = Bar()
+bar.printType()</code></p>
+''','''
+<p>You can determine the type of an object at runtime with the <code>type</code> built-in function:</p>
+<p><code>class Foo():
+let foo = Foo()
+print(type(foo))</code></p>
+<p>You can also determine if an object is an instance of a given type, either directly or through its inheritance chain, with the <code>isinstance</code> built-in function:</p>
+<p><code>class Foo:
+class Bar:
+class Baz(Bar):
+let b = Baz()
+print(isinstance(b,Baz), isinstance(b,Bar), isinstance(b,Foo), isinstance(b,object))</code></p>
+<p>All classes eventually inherit from the base class <code>object</code>, which provides default implementations of some special instance methods.</p>
+''','''
+<h1>Collections</h1>
+<p>Kuroko has built-in classes for flexible arrays (<code>list</code>) and hashmaps (<code>dict</code>), as well as immutable lists of items (<code>tuple</code>).</p>
+<p><code>let l = [1,2,"three",False]
+print(l)
+let d = {"foo": "bar", 1: 2}
+print(d)
+let t = ("immutable","tuple",1,2)
+print(t)</code></p>
+<p>Lists can also be generated dynamically through comprehensions, just as in Python:</p>
+<p><code>let fives = [x * 5 for x in [1,2,3,4,5]]
+print(fives)</code></p>
+''','''
+<h1>Loops</h1>
+<p>Kuroko provides C-style for-loops, while loops, and Python-style iterator for-loops:</p>
+<p><code>for i = 1; i < 5; i++:
+    print(i)</code></p>
+<p><code>let i = 36
+while i > 1:
+    i = i / 2
+    print(i)</code></p>
+<p><code>let l = [1,2,3]
+for i in l:
+    print(i)</code></p>
+''','''
+<p>If an iterator contains tuple values, those values can be <i>unpacked</i> into multiple variables:</p>
+<p><code>let l = [(1,2),(3,4),(5,6)]
+for left, right in l:
+    print(left, right)</code></p>
+<p>An exception will be raised if a tuple returned by the iterator has the wrong size for unpacking (<code>ValueError</code>), or if a value returned is not unpackable (<code>TypeError</code>).</p>
+''','''
+<h1>Lambda Functions</h1>
+<p>Lambda functions allow for the creation of simple functions anonymously. Note that the body of a lambda function is an expression, not a list of statements.</p>
+<p><code>def apply(lst, func):
+    return [func(v) for v in lst]
+apply([1,2,3,4],lambda x: x * 5)</code></p>
+''','''
+<h1>Exceptions</h1>
+<p>Kuroko provides a mechanism for handling errors at runtime. If an error is not caught, the interpreter will end and print a traceback.</p>
+<p><code>def foo(bar):
+    print("I expect an argument! " + bar)
+foo() # I didn't provide one!</code></p>
+<p>When using the repl, global state will remain after an exception and the prompt will be displayed again.</p>
+''','''
+<p>To catch exceptions, use <code>try</code>/<code>except</code>:</p>
+<p><code>def foo(bar):
+    print("I expect an argument! " + bar)
+try:
+    foo() # I didn't provide one!
+except:
+    print("oh no!")</code></p>
+''','''
+<p>Runtime exceptions are passed to the except block as a special variable <code>exception</code>.</p>
+<p><code>def foo(bar):
+    print("I expect an argument! " + bar)
+try:
+    foo() # I didn't provide one!
+except:
+    print("oh no, there was an exception:", repr(exception))</code></p>
+''','''
+<p>Exceptions can be generated with the <code>raise</code> statement. When raising an exception, the value can be anything, but subclasses of <code>__builtins__.Exception</code> are recommended.</p>
+<p><code>def login(password):
+    if password != "supersecret":
+        raise ValueError("Wrong password, try again!")
+    print("[Hacker voice] I'm in.")
+login("foo")</code></p>
+<p>The <code>except</code> block is optional, and an exception may be caught and ignored.</p>
+<p><code>def login(password):
+    if password != "supersecret":
+        raise ValueError("Wrong password, try again!")
+    print("[Hacker voice] I'm in.")
+try:
+    login("foo")</code></p>
+''','''
+<p><code>try</code>/<code>except</code> blocks can also be nested within each other. The deepest <code>try</code> block will be used to handle an exception.
+If its <code>except</code> block calls <code>raise</code>, the exception will filter up to the next <code>try</code> block. Either the original <code>exception</code> or a new exception can be raised.</p>
+<p><code>try:
+    print("Level one")
+    try:
+        print("Level two")
+        raise ValueError("Thrown exception")
+    except:
+        print("Caught in level two")
+except:
+    print("Not caught in level one!")
+try:
+    print("Level one")
+    try:
+        print("Level two")
+        raise ValueError("Thrown exception")
+    except:
+        print("Caught in level two")
+        raise exception
+except:
+    print("Caught in level one!")</code></p>
+''','''
+<h1>Modules</h1>
+<p>Modules in Kuroko work much like in Python, allowing scripts to call other scripts and use functions defined in other files.
+This in-browser REPL has a module file called "dummy.krk" with the following text:</p>
+<p><code>let __doc__ = "I am a module."
+
+def foo():
+    print("Hello, world:", __name__, __doc__)
+
+let x = 5
+let y = 7
+let theMeaningOfLifeTheUniverseAndEverything = 42</code></p>
+<p>We can use <code>import</code> to access this module's members:</p>
+<p><code>import dummy
+dummy.foo()
+print(dummy.theMeaningOfLifeTheUniverseAndEverything)</code></p>
+''','''
+<p>Modules are run once and then cached, so if they preform actions like printing or complex computation this will happen once when first imported.
+The globals table from the module is the fields table of an object. Further imports of the same module will return the same object.</p>
+<p>When importing a module, the names of members which should be imported can be specified and can be renamed:</p>
+<p><code>from dummy import foo
+foo()
+from dummy import theMeaningOfLifeTheUniverseAndEverything as fortytwo
+print(fortytwo)</code></p>
+''','''
+<h1>Packages</h1>
+<p>Modules can also come in the form of packages. Packages are modules that contain other modules.
+To make a package, create a directory in one of the module import paths with the name of your package and place a file named <code>__init__.krk</code> in that directory.
+This file will be run when the package is imported, but if you only want to use packages for namespacing it does not need to have any content.</p>
+<p>This REPL has a set of packages and modules called <code>foo.bar.baz</code>.
+When a module within a package is imported directly, as in import foo.bar.baz,
+its parent packages are imported in order and the interpreter ensures each has an attribute pointing to the next child.
+After the import statement, the top-level package will be bound in the current scope:</p>
+<p><code>import foo.bar.baz
+print(foo)
+print(foo.bar)
+print(foo.bar.baz)</code></p>
+''','''
+<p>If we want to get at the module <code>baz</code> we can use <code>import ... as ...</code> to bind it to a name instead:</p>
+<p><code>import foo.bar.baz as baz
+print(baz)
+try:
+    print(foo) # NameError
+except:
+    print(repr(exception))</code></p>
+<p>Note that only module names can be specified as the first argument to <code>import</code> or <code>from</code>, and that if a module within a package has never been imported it will not be available from its package.</p>
+''','''
+<h1>Iterators</h1>
+<p>The special method <code>__iter__</code> should return an <i>iterator</i>.
+An iterator is a <i>callabe value</i> which increments an internal state and returns the next value.
+If there are no values remaining, the iterator should return itself.</p>
+<p>An example of an iterator is the <code>range</code> built-in class, which was previous defined like this:</p>
+<p><code>class range:
+    "Helpful iterable."
+    def __init__(self, min, max):
+        self.min = min
+        self.max = max
+    def __iter__(self):
+        let i=self.min
+        let l=self.max
+        def _():
+            if i>=l:
+                return _
+            let o=i
+            i++
+            return o
+        return _</code></p>
+''','''
+<p>Objects which have an <code>__iter__</code> method can then be used with the <code>for ... in ...:</code> syntax:</p>
+<p><code>for i in range(1,5):
+    print(i)</code></p>
+<p>As in the <i>Loops</i> section above, an iterator may return a sequence of sequences which may be unpacked to multiple variables:</p>
+<p><code>class TupleGenerator:
+    def __iter__():
+        let up, down, limit = 0, 0, 5
+        def _():
+            if limit-- == 0: return _
+            return (up++,down--)
+        return _
+for i in TupleGenerator():
+    print(i)
+for up, down in TupleGenerator():
+    print(up,down)</code></p>
+''','''
+<h1>Subscripting (Indexing)</h1>
+<p>Objects with <code>__get__</code> and <code>__set__</code> methods can be used with square brackets <code>[]</code>:</p>
+<p><code>class Foo:
+    def __get__(ind):
+        print("You asked for ind=" + ind)
+        return ind * 5
+    def __set__(ind, val):
+        print("You asked to set ind=" + ind + " to " + val)
+let f = Foo()
+print(f[4])
+f[7] = "bar"</code></p>
+''','''
+<h1>Slicing</h1>
+<p>Substrings can be extracted from strings through <i>slicing</i>:</p>
+<p><code>print("Hello world!"[3:8])
+print("Hello world!"[:-1])
+print("Hello world!"[-1:])</code></p>
+<p>Lists can also be sliced:</p>
+<p><code>print([1,2,3,4,5,6][3:])</code></p>
+''','''
+<h1>String Conversions</h1>
+<p>If an object implements the <code>__str__</code> method, it will be called to produce string values through casting or printing:</p>
+<p><code>class Foo:
+    def __str__():
+        return "(I am a Foo!)"
+let f = Foo()
+print(f)</code></p>
+<p>The <code>__repr__</code> method serves a similar purpose and is used when the REPL displays values or when they are used in string representations of collections.
+The implementations of <code>__str__</code> and <code>__repr__</code> can be different:</p>
+<p><code>class Foo:
+    def __str__():
+        return "What is a Foo but a miserable pile of methods?"
+    def __repr__():
+        return "[Foo instance]"
+let f = Foo()
+print(f)
+print([f,f,f])</code></p>
+<p>As in Python, <code>__repr__</code> is intended to provide a canonical string representation which, if possible, should be usable to rereate the object.</p>
+''','''
+<h1>File I/O</h1>
+<p>The module <code>fileio</code> provides an interface for opening, reading, and writing files, including stdin/stdout/stderr.</p>
+<p><code>import fileio
+let f = fileio.open("/usr/local/lib/kuroko/dummy.krk","r")
+print(f.read())
+f.close()</code></p>
+<p><i><b>Note:</b> The in-browser REPL has a virtual filesystem provided by <a href="https://emscripten.org/">Emscripten</a>, which is where modules seen in the previous sections are defined.</i></p>
+''','''
+<h1>Decorators</h1>
+<p>Decorators allow functions and methods to be wrapped.</p>
+<p><code>def decorator(func):
+    print("I take the function to be decorated as an argument:", func)
+    def wrapper():
+        print("And I am the wrapper.")
+        func()
+        print("Returned from wrapped function.")
+    return wrapper
+
+@decorator
+def wrappedFunction():
+    print("Hello, world")
+
+wrappedFunction()</code></p>
+<p>The inner wrapper function is not necessary if all the work of the decorator can be done when the function is defined:</p>
+<p><code>def registerCallback(func):
+    print("Registering callback function",func)
+    return func
+
+@registerCallback
+def aFunction():
+    print("Hello, world!")
+
+aFunction()</code></p>
+''','''
+<p>Method wrappers work similarly, though be sure to explicitly provide a name (other than self) for the object instance:</p>
+<p><code>def methodDecorator(method):
+    def methodWrapper(instance, anExtraArgument):
+        method(instance)
+        print("I also required this extra argument:", anExtraArgument)
+    return methodWrapper
+
+class Foo():
+    @methodDecorator
+    def theMethod():
+        print("I am a method, so I can obviously access", self)
+        print("And I also didn't take any arguments, but my wrapper did:")
+
+let f = Foo()
+f.theMethod("the newly required argument")</code></p>
+''','''
+<p>Decorators are expressions, just like in Python, so to make a decorator with arguments create a function that takes those arguments and returns a decorator:</p>
+<p><code>def requirePassword(password):
+    print("I am creating a decorator.")
+    def decorator(func):
+        print("I am wrapping", func, "and attaching",password)
+        def wrapper(secretPassword):
+            if secretPassword != password:
+                print("You didn't say the magic word.")
+                return
+            func()
+        return wrapper
+    return decorator
+
+@requirePassword("hunter2")
+def superSecretFunction():
+    print("Welcome!")
+
+superSecretFunction("a wrong password")
+print("Let's try again.")
+superSecretFunction("hunter2")</code></p>
+''','''
+<h1>Keyword Arguments</h1>
+<p>Arguments may be passed to a function by specifying their name instead of using their positional location.</p>
+<p><code>def aFunction(a,b,c):
+    print(a,b,c)
+
+aFunction(1,2,3)
+aFunction(1,c=3,b=2)
+aFunction(b=2,c=3,a=1)</code></p>
+<p>This will be slower in execution than a normal function call, as the interpreter will need to figure out where to place arguments in the requested function by examining it at runtime,
+but it allows for functions to take many default arguments without forcing the caller to specify the values for everything leading up to one they want to specifically set.</p>
+<p><code>def aFunction(having=None,lots=None,of=None,default=None,args=None):
+    print(having,lots,of,default,args)
+
+aFunction(of="hello!")</code></p>
+''','''
+<h1><code>*args</code> and <code>**kwargs</code></h1>
+<p>When used as parameters in a function signature, * and ** before an identifier indicate that the function will accept arbitrary additional positional arguments and keyword arguments respectively.
+These options are typically applied to variables named <code>args</code> and <code>kwargs</code>, and they must appear last (and in this order) in the function signature if used.</p>
+<p>The variable marked with * will be provided as an ordered <code>list</code>, and ** will be an unordered <code>dict</code> of keyword names to values.</p>
+<p><code>def takesArgs(*args):
+    print(args)
+takesArgs(1,2,3)
+def takesKwargs(**kwargs):
+    print(kwargs)
+takesKwargs(a=1,b=2,c=3)
+def takesEither(*args,**kwargs):
+    print(args, kwargs)
+takesEither(1,2,a=3,b=4)
+def takesARequiredAndMore(a,*args):
+    print(a, args)
+takesARequiredAndMore(1,2,3,4)</code></p>
+''','''
+<h1>Argument Expansion</h1>
+<p>When used in a function argument list, * and ** before a <code>list</code> and <code>dict</code> expression respectively, will expand those values into the argument list.</p>
+<p><code>let l = [1,2,3]
+def foo(a,b,c):
+    print(a,b,c)
+foo(*l)
+let d = {"foo": "a", "bar": 1}
+def func(foo,bar):
+    print(foo, bar)
+func(**d)</code></p>
+<p>If an expanded list provides too many, or too few, arguments, an <code>ArgumentError</code> will be raised.
+If an expanded dict provides parameters which are not requested, an <code>ArgumentError</code> will be raised.
+If an expanded dict provides an argument which has already been defined, either as a positional argument or through a named parameter, an error will be raised.</p>
+''','''
+<h1>Ternary Expressions</h1>
+<p>Ternary expressions allow for branching conditions to be used in expression contexts:</p>
+<p><code>print("true branch" if True else "false branch")
+print("true branch" if False else "false branch")</code></p>
+<p>Ternary expressions perform short-circuiting and will not evaluate the branch they do not take:</p>
+<p><code>(print if True else explode)("What does this do?")</code></p>
+''','''
+<h1>Docstrings</h1>
+<p>If the first expression in a module, function, class, or method is a string, it will be attached to the corresponding object in the field <code>__doc__</code>:</p>
+<p><code>def foo():
+    \'\'\'This is a function that does things.\'\'\'
+    return 42
+
+print(foo.__doc__)</code></p>
+''','''
+<h1><code>with</code> Blocks</h1>
+<p>A <code>with</code> statement introduces a <i>context manager</i> and should be passed an object with an <code>__enter__</code> and <code>__exit__</code> method, such as a <code>fileio.File</code>.
+The <code>__enter__</code> method will be called upon entry into the block, and the <code>__exit__</code> method will be called upon exit from the block.</p>
+<p>The context manager object can also be assigned to a name for use within the block. Note that as with other control flow structures in Kuroko,
+this name is only valid within the block and can not be referenced outside of it, and the same is true of any names defined within the block.
+If you need to output values from within the block, such as in the typical case of opening a file and loading its contents,
+be sure to declare any necessary variables before the <code>with</code> statement:</p>
+<p><code>from fileio import open
+let lines
+with open('/usr/local/lib/kuroko/dummy.krk') as f:
+    lines = [l.strip() for l in f.readlines()]
+print(lines)</code></p>
+''','''
+<p>Note that you can declare a variable for the object used with <code>__enter__</code> and <code>__exit__</code> before the <code>with</code> statement in order to access it after the block has been exited:</p>
+<p><code>from fileio import open
+let f = open('/usr/local/lib/kuroko/dummy.krk')
+print(f)
+let lines
+with f:
+    lines = [l.strip() for l in f.readlines()]
+print(f)</code></p>
+''','''
+<p>If an early return is encountered inside of a with block, the __exit__ method for the context manager will be called before the function returns.</p>
+<p><code>class ContextManager:
+    def __init__(title):
+        self.title = title
+    def __enter__():
+        print("Enter context manager", self.title)
+    def __exit__():
+        print("Exit context manager", self.title)
+def doesANestedThing():
+    with ContextManager('outer'):
+        with ContextManager('inner'):
+            with ContextManager('triple'):
+                return 42
+            print('Should not print')
+        print('Should not print')
+    print('Should not print')
+print(doesANestedThing())</code></p>
+<p><i><b>Note:</b> The implement of <code>with</code> blocks is incomplete: exceptions raised within a <code>with</code> block which are not also caught within the block will result in the context manager's <code>__exit__</code> method not being called.</i></p>
+''','''
+<h1>All done!</h1>
+<p>There's just one more thing to cover: The <code>del</code> statement allows names to be deleted from the global scope or from the attributes table of an object. Let's clean things up:</p>
+<p><code>del tutorial
+del __builtins__.next</code></p>
+''']
+
+def tutorial(start=0):
+    '''Displays an interactive tutorial.'''
+    let this = tutorials[start]
+    # Process this section and highlight <code> blocks.
+    let output = ''
+    while '<code>' in this:
+        let before, after = this.split('<code>',1)
+        output += before
+        let code, other = after.split('</code>',1)
+        output += codeSample(code)
+        this = other
+    if this: output += this
+    if start >= 3 and start + 1 < len(tutorials):
+        output += nextButton()
+    write(output)
+
+    start += 1
+    if start < len(tutorials):
+        __builtins__.next = lambda: tutorial(start)

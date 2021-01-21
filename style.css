@@ -91,3 +91,11 @@ html body {
   padding: 0px;
   margin: 0px;
 }
+.cardnumber {
+  float: right;
+  font-size: 12px;
+  color: #1f1f1f;
+  border-radius: 3px;
+  background-color: #d0d0d0;
+  padding: 4px;
+}

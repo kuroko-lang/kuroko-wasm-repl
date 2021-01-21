@@ -718,7 +718,7 @@ def tutorial(start=0):
     '''Displays an interactive tutorial.'''
     let this = tutorials[start]
     # Process this section and highlight <code> blocks.
-    let output = ''
+    let output = f'<div class="cardnumber">Slide {start+1}/{len(tutorials)}</div>'
     while '<code>' in this:
         let before, after = this.split('<code>',1)
         output += before

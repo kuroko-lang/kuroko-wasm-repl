@@ -114,8 +114,9 @@ In regular strings, line feeds are not accepted, but <i>big strings</i> can run 
 <li><code>"\\t"</code>: horizontal tab</li>
 <li><code>"\\v"</code>: vertical tab</li>
 <li><code>"\\["</code>: ANSI escape (codepoint U+001B)</li>
-<li><code>"\\x42"</code>: A two-character hexadecimal sequence, representing a codepoint value below U+0100.</li>
-<li><code>"\\u3042"</code>: A four-character hexadecimal sequence, representing a codepoint value below U+10000.</li>
+<li><code>"\\x42"</code>: A two-digit hexadecimal sequence, representing a codepoint value below U+0100.</li>
+<li><code>"\\u3042"</code>: A four-digit hexadecimal sequence, representing a codepoint value below U+10000.</li>
+<li><code>"\\U0001F914"</code>: An eight-digit hexadecimal sequence, representing any codepoint value.</li>
 </ul>
 ''','''
 <h1>Operations on Strings</h1>

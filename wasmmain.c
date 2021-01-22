@@ -6,6 +6,7 @@
 #include <emscripten.h>
 #include "kuroko.h"
 #include "vm.h"
+#include "memory.h"
 
 /**
  * Copied over from the main interpreter; packages the C modules directly.
@@ -71,6 +72,15 @@ EM_JS(int32_t, krk_jsType, (int i), {
 
 static KrkClass * jsObjectClass;
 
+struct JSObject {
+	KrkInstance inst;
+	KrkString * str;
+};
+
+static void _jsobject_ongcscan(KrkInstance * self) {
+	krk_markObject((KrkObj*)((struct JSObject *)self)->str);
+}
+
 static KrkValue _jsobject_init(int argc, KrkValue argv[]) {
 	if (argc != 2) {
 		krk_runtimeError(vm.exceptions.argumentError, "Need a string argument of an object to build on");
@@ -108,7 +118,7 @@ static KrkValue _jsobject_init(int argc, KrkValue argv[]) {
 
 
 	krk_attachNamedValue(&self->fields, "__jsname__", argv[1]);
-	self->_internal = AS_STRING(argv[1]);
+	((struct JSObject*)self)->str = AS_STRING(argv[1]);
 	krk_attachNamedValue(&self->fields, "__index__", INTEGER_VAL(returnValue));
 
 	return OBJECT_VAL(self);
@@ -118,7 +128,6 @@ static KrkValue _jsobject_dir(int argc, KrkValue argv[]) {
 	KrkInstance * self = AS_INSTANCE(argv[0]);
 	KrkValue outputList = krk_dirObject(argc,argv);
 	krk_push(outputList);
-	KrkValue _list_internal = OBJECT_VAL(AS_INSTANCE(outputList)->_internal);
 
 	KrkValue index;
 	krk_tableGet(&self->fields, OBJECT_VAL(krk_copyString("__index__",9)), &index);
@@ -128,7 +137,7 @@ static KrkValue _jsobject_dir(int argc, KrkValue argv[]) {
 	int32_t keyCount = krk_getKeyCount(returnValue);
 	for (int32_t i = 0; i < keyCount; ++i) {
 		const char * val = krk_getKey(returnValue, i);
-		krk_writeValueArray(AS_LIST(_list_internal), OBJECT_VAL(krk_takeString((char*)val, strlen(val))));
+		krk_writeValueArray(AS_LIST(outputList), OBJECT_VAL(krk_takeString((char*)val, strlen(val))));
 	}
 
 	krk_pop(); /* outputList */
@@ -147,8 +156,8 @@ static KrkValue _jsobject_getattr(int argc, KrkValue argv[]) {
 	}
 
 	KrkInstance * self = AS_INSTANCE(argv[0]);
-	char * tmp = malloc(10 + AS_STRING(argv[1])->length + ((KrkString*)self->_internal)->length);
-	sprintf(tmp, "('%s' in %s)", AS_CSTRING(argv[1]), ((KrkString*)self->_internal)->chars);
+	char * tmp = malloc(10 + AS_STRING(argv[1])->length + ((struct JSObject*)self)->str->length);
+	sprintf(tmp, "('%s' in %s)", AS_CSTRING(argv[1]), ((struct JSObject*)self)->str->chars);
 	int valid = emscripten_run_script_int(tmp);
 	if (!valid) {
 		free(tmp);
@@ -159,7 +168,7 @@ static KrkValue _jsobject_getattr(int argc, KrkValue argv[]) {
 	KrkInstance * newField = krk_newInstance(jsObjectClass);
 	krk_push(OBJECT_VAL(newField));
 
-	sprintf(tmp, "%s.%s", ((KrkString*)self->_internal)->chars, AS_CSTRING(argv[1]));
+	sprintf(tmp, "%s.%s", ((struct JSObject*)self)->str->chars, AS_CSTRING(argv[1]));
 	krk_push(OBJECT_VAL(krk_takeString(tmp, strlen(tmp))));
 
 	KrkValue actualResult = _jsobject_init(2, (KrkValue[]){krk_peek(1),krk_peek(0)});
@@ -190,7 +199,7 @@ static KrkValue _jsobject_call(int argc, KrkValue argv[]) {
 		EM_ASM({Module.krkb[$0]();}, returnValue);
 		return NONE_VAL();
 	} else if (argc == 2) {
-		KrkClass * type = AS_CLASS(krk_typeOf(1,&argv[1]));
+		KrkClass * type = krk_getType(argv[1]);
 		krk_push(argv[1]);
 		KrkValue repr = krk_callSimple(OBJECT_VAL(type->_reprer), 1, 0);
 		krk_push(repr);
@@ -252,11 +261,10 @@ int main() {
 
 	KrkInstance * jsModule = krk_newInstance(vm.moduleClass);
 	krk_attachNamedObject(&vm.modules, "js", (KrkObj*)jsModule);
-	jsObjectClass = krk_newClass(krk_copyString("JSObject",8));
+	jsObjectClass = krk_newClass(krk_copyString("JSObject",8), vm.objectClass);
+	jsObjectClass->allocSize = sizeof(struct JSObject);
+	jsObjectClass->_ongcscan = _jsobject_ongcscan;
 	krk_attachNamedObject(&jsModule->fields, "JSObject", (KrkObj*)jsObjectClass);
-	jsObjectClass->base = vm.objectClass;
-	krk_tableAddAll(&vm.objectClass->methods, &jsObjectClass->methods);
-	krk_tableAddAll(&vm.objectClass->fields,  &jsObjectClass->fields);
 	/* Okay, how do we want to do this... */
 	krk_defineNative(&jsObjectClass->methods, ".__init__", _jsobject_init);
 	krk_defineNative(&jsObjectClass->methods, ".__getattr__", _jsobject_getattr);
@@ -283,7 +291,7 @@ int main() {
 char * krk_call(char * src) {
 	KrkValue result = krk_interpret(src, 0, "<stdin>", "<stdin>");
 	if (!IS_NONE(result)) {
-		KrkClass * type = AS_CLASS(krk_typeOf(1,&result));
+		KrkClass * type = krk_getType(result);
 		krk_push(result);
 		result = krk_callSimple(OBJECT_VAL(type->_reprer), 1, 0);
 		krk_resetStack();

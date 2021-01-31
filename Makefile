@@ -16,7 +16,7 @@ all: index.js ${MODS} res/init.krk res/baz.krk
 %.em.o: %.c ${HEADERS}
 	${CC} ${CFLAGS} ${EMCFLAGS} -c -o $@ $<
 
-index.js: ${OBJS}
+index.js: ${OBJS} wasmmain.c
 	${CC} ${CFLAGS} ${EMCFLAGS} -o $@ wasmmain.c ${OBJS}
 
 res/%.krk: ../modules/%.krk

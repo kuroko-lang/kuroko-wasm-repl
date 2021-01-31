@@ -245,6 +245,7 @@ static KrkValue _jsexec(int argc, KrkValue argv[]) {
  */
 int main() {
 	/* Set up VM with no flags */
+	vm.binpath = "/usr/local/bin/kuroko";
 	krk_initVM(0);
 
 	/* If/when we do actually call exit, free the VM */

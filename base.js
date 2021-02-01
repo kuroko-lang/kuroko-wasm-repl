@@ -4,6 +4,15 @@ var currentEditor; /* reference to newest Ace instance */
 var consoleEnabled = false; /* whether to print to the browser console */
 var scrollToBottom;
 var blockCounter = 0;
+var codeHistory = [];
+var historySpot = 0;
+
+var codeSamples = {
+  helloworld: "print('Hello, world!')",
+  variables: "let a, b, c = 1, 2.0, 'three'\nprint(a,b,c)",
+  classes: "class Foo(object):\n  def __init__(self):\n    self.bar = 'baz'\n  def frob(self):\n    print(self.bar)\n\nlet foo = Foo()\nfoo.frob()",
+  comprehensions: "let lst = [x * 5 for x in range(10)]\nlet dct = {str(x): x for x in lst}\nprint(lst)\nprint(dct)"
+};
 
 document.getElementById("container").innerText = "";
 
@@ -16,10 +25,14 @@ document.getElementById("container").innerText = "";
  */
 function runCode(editor) {
   var value = editor.getValue();
+  if (!codeHistory.length || codeHistory[codeHistory.length-1] != value) {
+    codeHistory.push(value);
+  }
+  historySpot = codeHistory.length;
   /* Freeze the editor. */
+  editor.renderer.off("afterRender", scrollToBottom);
   editor.setReadOnly(true);
   editor.renderer.$cursorLayer.element.style.display = "none";
-  editor.renderer.off("afterRender", scrollToBottom);
   var frozenEditor = document.createElement("pre");
   frozenEditor.className = "lines";
   var lines = editor.container.getElementsByClassName("ace_line");
@@ -46,8 +59,6 @@ function runCode(editor) {
     newOutput.className = "repl";
     newOutput.appendChild(document.createTextNode(' => ' + result));
     document.getElementById("container").appendChild(newOutput);
-    /* and scroll to the bottom */
-    newOutput.scrollIntoView();
   }
   /* stop using this editor but leave it in the document for visual history */
   currentEditor = createEditor();
@@ -72,6 +83,33 @@ function enterCallback(editor) {
   runCode(editor);
 }
 
+function historyBackIfOneLine(editor) {
+  var value = editor.getValue();
+  if (value.split("\n").length == 1 && codeHistory.length > 0) {
+    editor.setValue(codeHistory[historySpot-1],1);
+    historySpot--;
+    if (historySpot == 0) historySpot = 1;
+  } else {
+    var current = editor.getCursorPosition();
+    editor.moveCursorTo(current.row - 1, current.column, true);
+  }
+}
+
+function historyForwardIfOneLine(editor) {
+  var value = editor.getValue();
+  if (value.split("\n").length == 1 && codeHistory.length > 0) {
+    if (historySpot == codeHistory.length) {
+      editor.setValue('',1);
+    } else {
+      editor.setValue(codeHistory[historySpot],1);
+      historySpot++;
+    }
+  } else {
+    var current = editor.getCursorPosition();
+    editor.moveCursorTo(current.row + 1, current.column, true);
+  }
+}
+
 /**
  * Builds an Ace editor and configures it for Kuroko.
  */
@@ -92,6 +130,8 @@ function createEditor() {
   editor.setBehavioursEnabled(false);
   editor.session.setMode("ace/mode/kuroko");
   editor.commands.bindKey("Return", enterCallback);
+  editor.commands.bindKey("Up", historyBackIfOneLine);
+  editor.commands.bindKey("Down", historyForwardIfOneLine);
   editor.focus();
   scrollToBottom = editor.renderer.on('afterRender', function() {
     newDiv.scrollIntoView();
@@ -105,17 +145,22 @@ function addText(mode, text) {
   newOutput.appendChild(document.createTextNode(text));
   if (!text.length) newOutput.appendChild(document.createElement("wbr"));
   document.getElementById("container").appendChild(newOutput);
-  newOutput.scrollIntoView();
+}
+
+function insertCode(code) {
+  currentEditor.setValue(code,1);
+  window.setTimeout(function() { runCode(currentEditor); }, 100);
+  return false;
 }
 
 function insertNext() {
-  currentEditor.setValue('next()',1)
-  window.setTimeout(function() { runCode(currentEditor); }, 100);
+  insertCode('next()');
+  return false;
 }
 
 function insertThis(e) {
-  currentEditor.setValue(e.innerText,1);
-  window.setTimeout(function() { runCode(currentEditor); }, 100);
+  insertCode(e.innerText);
+  return false;
 }
 
 var Module = {

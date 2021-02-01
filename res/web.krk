@@ -19,7 +19,7 @@ def urlencode(s):
     return ''.join(['%'+hex2(ord(c)) if c in reserved else c for c in s])
 
 def nextButton():
-    return '''<p class="nextbutton"><a onclick="insertNext()" href="#" class="codelink"><code>next()</code></a></p>'''
+    return '''<p class="nextbutton"><a onclick="insertNext()" class="codelink"><code>next()</code></a></p>'''
 
 let escapes = {
     '<': '&lt;',
@@ -54,7 +54,7 @@ def codeSample(code):
     let classes = ' class="multiline"' if '\n' in code else ''
     let processed = highlighter.process()
     let out = '\n'.join([''.join([mappings[f].format(escapeAngles(w)) for w, f in line]) for line in processed])
-    return '''<a onclick="insertThis(this)" href="#" class="codelink"><code{}>{}</code></a>'''.format(classes, out)
+    return '''<a onclick="insertThis(this)" class="codelink"><code{}>{}</code></a>'''.format(classes, out)
 
 let tutorials = ['''
 <h1>Welcome to Kuroko!</h1>

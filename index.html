@@ -8,14 +8,69 @@
     <script src="src-min/ace.js"></script>
     <link rel="stylesheet" href="style.css">
     <link rel="shortcut icon" href="favicon.ico">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-giJF6kkoqNQ00vy+HMDP7azOuL0xtbfIcaT9wjKHr8RbDVddVHyTfAAsrekwKmP1" crossorigin="anonymous">
   </head>
   <body>
-    <div id="container" class="terminal-container">
-      This is an in-browser REPL for <a href="https://github.com/klange/kuroko">Kuroko</a>.<br>
-      JavaScript and WebAssembly are required to view this page.<br>
-      The total size of scripts, including the WebAssembly bytecode for the interpreter, is less than 1MB and no off-site resources are fetched.
-    </div>
+    <nav class="navbar navbar-expand-md navbar-dark bg-dark fixed-top">
+      <div class="container-fluid">
+        <div class="collapse navbar-collapse" id="navbarCollapse">
+          <ul class="navbar-nav ms-auto mb-2 mb-md-0">
+            <li class="nav-item">
+              <a class="nav-link codelink active" onclick="insertCode('tutorial()')">Tutorial</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link codelink" onclick="insertCode('license()')">License</a>
+            </li>
+            <li class="nav-item dropdown">
+              <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                Samples
+              </a>
+              <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
+                <li><a class="dropdown-item force-cursor" onclick="insertCode(codeSamples.helloworld)">Hello, world!</a></li>
+                <li><a class="dropdown-item force-cursor" onclick="insertCode(codeSamples.variables)">Variable declarations</a></li>
+                <li><a class="dropdown-item force-cursor" onclick="insertCode(codeSamples.classes)">Classes</a></li>
+                <li><a class="dropdown-item force-cursor" onclick="insertCode(codeSamples.comprehensions)">Iterable Comprehensions</a></li>
+              </ul>
+            </li>
+          </ul>
+        </div>
+        <div class="mx-auto order-0" style="padding-left: 2rem; padding-right: 2rem">
+          <a class="navbar-brand" href="#">
+            <img src="logo.png" style="height: 2rem; padding-right: 0.5rem;">
+            Kuroko
+          </a>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+          </button>
+        </div>
+        <div class="collapse navbar-collapse" id="navbarCollapse">
+          <ul class="navbar-nav me-auto mb-2 mb-md-0">
+            <li class="nav-item">
+              <a class="nav-link" href="https://github.com/kuroko-lang/kuroko">Github</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="https://github.com/kuroko-lang/kuroko/releases">Downloads</a>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </nav>
+    <main class="container">
+      <div class="bg-light p-5 rounded centered">
+        <p class="lead">Kuroko is a bytecode-compiled, dynamic, interpreted programming language with familiar Python-like syntax and a small, embeddable core - small enough that it can be provided here in your browser through WASM!</p>
+        <a class="btn btn-lg my-1 btn-danger" onclick="insertCode('tutorial()')" role="button">Follow the tutorial »</a>
+        <a class="btn btn-lg my-1 btn-secondary" onclick="https://github.com/kuroko-lang/kuroko/" role="button">See Kuroko on Github »</a>
+      </div>
+      <div class="py-3">
+        <div id="container" class="terminal-container">
+          This is an in-browser REPL for <a href="https://github.com/kuroko-lang/kuroko">Kuroko</a>.<br>
+          JavaScript and WebAssembly are required to view this page - if you're seeing this message, you may have JavaScript disabled.<br>
+          The total size of scripts, including the WebAssembly bytecode for the interpreter, is less than 1MB and no off-site resources are fetched.
+        </div>
+      </div>
+    </main>
     <script type="text/javascript" src="base.js"></script>
     <script async type="text/javascript" src="index.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta1/dist/js/bootstrap.bundle.min.js" integrity="sha384-ygbV9kiqUc6oa4msXn9868pTtWMgiQaeYH7/t7LECLbyPA2x65Kgf80OJFdroafW" crossorigin="anonymous"></script>
   </body>
 </html>

@@ -2,8 +2,15 @@ html body {
   margin: 0px;
   font-family: -apple-system, "Segoe UI", "Helvetica", "Arial", sans-serif;
 }
+body {
+  padding-top: 4.5rem;
+}
 .terminal-container {
-  margin: 0px;
+  padding: 5px;
+  background-color: #1f1f1f;
+  text-align: left;
+  border-radius: 8px;
+  border: 1px solid #2e2e2e;
 }
 #container > div {
   width: auto;
@@ -17,6 +24,7 @@ html body {
   font-family: "Monaco", "Menlo", "Ubuntu Mono", "Consolas", "source-code-pro", monospace;
   white-space: pre-wrap;
   counter-reset: line-no;
+  line-height: normal;
 }
 #container > .repl {
   color: rgb(100,100,100);
@@ -34,7 +42,7 @@ html body {
   counter-increment: line-no;
   content: counter(line-no);
   padding-right: 1em;
-  width: 2em;
+  width: 3em;
   display: inline-block;
   text-align: right;
   background-color: #000000;
@@ -85,6 +93,10 @@ html body {
 .inset a.codelink {
   text-decoration: none;
   color: #e6e6e6;
+  cursor: pointer;
+}
+.force-cursor {
+  cursor: pointer;
 }
 .inset p.nextbutton {
   text-align: right;

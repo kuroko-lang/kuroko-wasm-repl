@@ -16,10 +16,10 @@
         <div class="collapse navbar-collapse" id="navbarCollapse">
           <ul class="navbar-nav ms-auto mb-2 mb-md-0">
             <li class="nav-item">
-              <a class="nav-link codelink active" onclick="insertCode('tutorial()')">Tutorial</a>
+              <a class="nav-link codelink active" href="#" onclick="insertCode('tutorial()')">Tutorial</a>
             </li>
             <li class="nav-item">
-              <a class="nav-link codelink" onclick="insertCode('license()')">License</a>
+              <a class="nav-link codelink" href="#" onclick="insertCode('license()')">License</a>
             </li>
             <li class="nav-item dropdown">
               <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
@@ -30,6 +30,8 @@
                 <li><a class="dropdown-item force-cursor" onclick="insertCode(codeSamples.variables)">Variable declarations</a></li>
                 <li><a class="dropdown-item force-cursor" onclick="insertCode(codeSamples.classes)">Classes</a></li>
                 <li><a class="dropdown-item force-cursor" onclick="insertCode(codeSamples.comprehensions)">Iterable Comprehensions</a></li>
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item force-cursor" onclick="insertCode(codeSamples.tutorialsource)">Tutorial source</a></li>
               </ul>
             </li>
           </ul>
@@ -56,10 +58,10 @@
       </div>
     </nav>
     <main class="container">
-      <div class="bg-light p-5 rounded centered">
+      <div class="bg-light p-5 rounded text-center">
         <p class="lead">Kuroko is a bytecode-compiled, dynamic, interpreted programming language with familiar Python-like syntax and a small, embeddable core - small enough that it can be provided here in your browser through WASM!</p>
-        <a class="btn btn-lg my-1 btn-danger" onclick="insertCode('tutorial()')" role="button">Follow the tutorial »</a>
-        <a class="btn btn-lg my-1 btn-secondary" onclick="https://github.com/kuroko-lang/kuroko/" role="button">See Kuroko on Github »</a>
+        <a class="btn btn-lg m-1 btn-danger" onclick="insertCode('tutorial()')" role="button">Follow the tutorial »</a>
+        <a class="btn btn-lg m-1 btn-secondary" href="https://github.com/kuroko-lang/kuroko/" role="button">See Kuroko on Github »</a>
       </div>
       <div class="py-3">
         <div id="container" class="terminal-container">
@@ -68,6 +70,10 @@
           The total size of scripts, including the WebAssembly bytecode for the interpreter, is less than 1MB and no off-site resources are fetched.
         </div>
       </div>
+      <footer class="container text-center mb-3">
+        <p class="mb-0">Copyright 2020-2021 <a href="https://github.com/klange">K. Lange</a></p>
+        <p class="mb-0">Powered by <a href="https://emscripten.org">emscripten</a>, <a href="https://ace.c9.io/">Ace</a>, and <a href="https://getbootstrap.com/">Bootstrap</a>.</p>
+      </footer>
     </main>
     <script type="text/javascript" src="base.js"></script>
     <script async type="text/javascript" src="index.js"></script>

@@ -11,7 +11,8 @@ var codeSamples = {
   helloworld: "print('Hello, world!')",
   variables: "let a, b, c = 1, 2.0, 'three'\nprint(a,b,c)",
   classes: "class Foo(object):\n  def __init__(self):\n    self.bar = 'baz'\n  def frob(self):\n    print(self.bar)\n\nlet foo = Foo()\nfoo.frob()",
-  comprehensions: "let lst = [x * 5 for x in range(10)]\nlet dct = {str(x): x for x in lst}\nprint(lst)\nprint(dct)"
+  comprehensions: "let lst = [x * 5 for x in range(10)]\nlet dct = {str(x): x for x in lst}\nprint(lst)\nprint(dct)",
+  tutorialsource: "import web, fileio\nweb.write(web.codeSample(fileio.open(web.__file__).read()))"
 };
 
 document.getElementById("container").innerText = "";

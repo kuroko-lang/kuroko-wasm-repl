@@ -83,12 +83,12 @@ static void _jsobject_ongcscan(KrkInstance * self) {
 
 static KrkValue _jsobject_init(int argc, KrkValue argv[]) {
 	if (argc != 2) {
-		krk_runtimeError(vm.exceptions.argumentError, "Need a string argument of an object to build on");
+		krk_runtimeError(vm.exceptions->argumentError, "Need a string argument of an object to build on");
 		return NONE_VAL();
 	}
 
 	if (!IS_STRING(argv[1])) {
-		krk_runtimeError(vm.exceptions.typeError, "Argument must be string");
+		krk_runtimeError(vm.exceptions->typeError, "Argument must be string");
 		return NONE_VAL();
 	}
 
@@ -100,7 +100,7 @@ static KrkValue _jsobject_init(int argc, KrkValue argv[]) {
 	free(tmp);
 
 	if (returnValue == -1) {
-		krk_runtimeError(vm.exceptions.nameError, "%s", AS_CSTRING(argv[1]));
+		krk_runtimeError(vm.exceptions->nameError, "%s", AS_CSTRING(argv[1]));
 		return NONE_VAL();
 	}
 
@@ -146,12 +146,12 @@ static KrkValue _jsobject_dir(int argc, KrkValue argv[]) {
 
 static KrkValue _jsobject_getattr(int argc, KrkValue argv[]) {
 	if (argc != 2) {
-		krk_runtimeError(vm.exceptions.argumentError, "Need a string argument of an object to build on");
+		krk_runtimeError(vm.exceptions->argumentError, "Need a string argument of an object to build on");
 		return NONE_VAL();
 	}
 
 	if (!IS_STRING(argv[1])) {
-		krk_runtimeError(vm.exceptions.typeError, "Argument must be string");
+		krk_runtimeError(vm.exceptions->typeError, "Argument must be string");
 		return NONE_VAL();
 	}
 
@@ -161,7 +161,7 @@ static KrkValue _jsobject_getattr(int argc, KrkValue argv[]) {
 	int valid = emscripten_run_script_int(tmp);
 	if (!valid) {
 		free(tmp);
-		krk_runtimeError(vm.exceptions.attributeError, "%s", AS_CSTRING(argv[1]));
+		krk_runtimeError(vm.exceptions->attributeError, "%s", AS_CSTRING(argv[1]));
 		return NONE_VAL();
 	}
 
@@ -210,20 +210,20 @@ static KrkValue _jsobject_call(int argc, KrkValue argv[]) {
 		krk_pop();
 		if (result == 1) {
 			const char * s = krk_jsErr();
-			krk_runtimeError(vm.exceptions.valueError, "JS Error: %s", s);
+			krk_runtimeError(vm.exceptions->valueError, "JS Error: %s", s);
 			free((char*)s);
 			return NONE_VAL();
 		}
 		return NONE_VAL();
 	} else {
-		krk_runtimeError(vm.exceptions.typeError, "Don't know how to call that.");
+		krk_runtimeError(vm.exceptions->typeError, "Don't know how to call that.");
 		return NONE_VAL();
 	}
 }
 
 static KrkValue _jsexec(int argc, KrkValue argv[]) {
 	if (argc != 1 || !IS_STRING(argv[0])) {
-		krk_runtimeError(vm.exceptions.typeError, "must be string");
+		krk_runtimeError(vm.exceptions->typeError, "must be string");
 		return NONE_VAL();
 	}
 	char * tmp = malloc(AS_STRING(argv[0])->length + 100);
@@ -232,7 +232,7 @@ static KrkValue _jsexec(int argc, KrkValue argv[]) {
 	free(tmp);
 	if (result == 1) {
 		const char * s = krk_jsErr();
-		krk_runtimeError(vm.exceptions.valueError, "JS Error: %s", s);
+		krk_runtimeError(vm.exceptions->valueError, "JS Error: %s", s);
 		free((char*)s);
 		return NONE_VAL();
 	}
@@ -260,9 +260,9 @@ int main() {
 
 	emscripten_run_script("Module.krkb = [];");
 
-	KrkInstance * jsModule = krk_newInstance(vm.moduleClass);
+	KrkInstance * jsModule = krk_newInstance(vm.baseClasses->moduleClass);
 	krk_attachNamedObject(&vm.modules, "js", (KrkObj*)jsModule);
-	jsObjectClass = krk_newClass(krk_copyString("JSObject",8), vm.objectClass);
+	jsObjectClass = krk_newClass(krk_copyString("JSObject",8), vm.baseClasses->objectClass);
 	jsObjectClass->allocSize = sizeof(struct JSObject);
 	jsObjectClass->_ongcscan = _jsobject_ongcscan;
 	krk_attachNamedObject(&jsModule->fields, "JSObject", (KrkObj*)jsObjectClass);
@@ -277,7 +277,7 @@ int main() {
 
 	/* Set up the interpreter session */
 	krk_startModule("<module>");
-	krk_attachNamedValue(&vm.module->fields,"__doc__", NONE_VAL());
+	krk_attachNamedValue(&krk_currentThread.module->fields,"__doc__", NONE_VAL());
 
 	return 0;
 }

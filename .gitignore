@@ -1,3 +1,4 @@
 index.js
 index.wasm
+index.worker.js
 *.krk

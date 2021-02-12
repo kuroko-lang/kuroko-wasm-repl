@@ -81,7 +81,7 @@ static void _jsobject_ongcscan(KrkInstance * self) {
 	krk_markObject((KrkObj*)((struct JSObject *)self)->str);
 }
 
-static KrkValue _jsobject_init(int argc, KrkValue argv[]) {
+static KrkValue _jsobject_init(int argc, KrkValue argv[], int hasKw) {
 	if (argc != 2) {
 		krk_runtimeError(vm.exceptions->argumentError, "Need a string argument of an object to build on");
 		return NONE_VAL();
@@ -124,9 +124,9 @@ static KrkValue _jsobject_init(int argc, KrkValue argv[]) {
 	return OBJECT_VAL(self);
 }
 
-static KrkValue _jsobject_dir(int argc, KrkValue argv[]) {
+static KrkValue _jsobject_dir(int argc, KrkValue argv[], int hasKw) {
 	KrkInstance * self = AS_INSTANCE(argv[0]);
-	KrkValue outputList = krk_dirObject(argc,argv);
+	KrkValue outputList = krk_dirObject(argc,argv,hasKw);
 	krk_push(outputList);
 
 	KrkValue index;
@@ -144,7 +144,7 @@ static KrkValue _jsobject_dir(int argc, KrkValue argv[]) {
 	return outputList;
 }
 
-static KrkValue _jsobject_getattr(int argc, KrkValue argv[]) {
+static KrkValue _jsobject_getattr(int argc, KrkValue argv[], int hasKw) {
 	if (argc != 2) {
 		krk_runtimeError(vm.exceptions->argumentError, "Need a string argument of an object to build on");
 		return NONE_VAL();
@@ -171,7 +171,7 @@ static KrkValue _jsobject_getattr(int argc, KrkValue argv[]) {
 	sprintf(tmp, "%s.%s", ((struct JSObject*)self)->str->chars, AS_CSTRING(argv[1]));
 	krk_push(OBJECT_VAL(krk_takeString(tmp, strlen(tmp))));
 
-	KrkValue actualResult = _jsobject_init(2, (KrkValue[]){krk_peek(1),krk_peek(0)});
+	KrkValue actualResult = _jsobject_init(2, (KrkValue[]){krk_peek(1),krk_peek(0)},0);
 
 	krk_pop();
 	krk_pop();
@@ -186,7 +186,7 @@ static KrkValue _jsobject_getattr(int argc, KrkValue argv[]) {
 	}
 }
 
-static KrkValue _jsobject_call(int argc, KrkValue argv[]) {
+static KrkValue _jsobject_call(int argc, KrkValue argv[], int hasKw) {
 	KrkInstance * self = AS_INSTANCE(argv[0]);
 	KrkValue index;
 	krk_tableGet(&self->fields, OBJECT_VAL(krk_copyString("__index__",9)), &index);
@@ -221,7 +221,7 @@ static KrkValue _jsobject_call(int argc, KrkValue argv[]) {
 	}
 }
 
-static KrkValue _jsexec(int argc, KrkValue argv[]) {
+static KrkValue _jsexec(int argc, KrkValue argv[], int hasKw) {
 	if (argc != 1 || !IS_STRING(argv[0])) {
 		krk_runtimeError(vm.exceptions->typeError, "must be string");
 		return NONE_VAL();

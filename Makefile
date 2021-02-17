@@ -4,12 +4,13 @@ HEADERS = $(wildcard ../src/*.h)
 CC = emcc
 CFLAGS = -O3 -I../src/ -DDEBUG
 # Turn this on if you think you really need it.
-#EMCFLAGS  = -s ALLOW_MEMORY_GROWTH=1
+EMCFLAGS  = -s ALLOW_MEMORY_GROWTH=1
 EMCFLAGS += -s NO_EXIT_RUNTIME=1
 EMCFLAGS += -s WASM=1
 EMCFLAGS += -s EXPORTED_FUNCTIONS='["_krk_call","_main"]'
 EMCFLAGS += -s EXPORTED_RUNTIME_METHODS='["ccall","cwrap"]'
 EMCFLAGS += --use-preload-plugins
+FINALLINK = -g4 --source-map-base 'http://localhost:8080/'
 
 # Threads require special headers to be sent by the server
 # that provides the main page and possibly also the JS/WASM,
@@ -25,7 +26,7 @@ all: index.js ${MODS} res/init.krk res/baz.krk
 	${CC} ${CFLAGS} ${EMCFLAGS} -c -o $@ $<
 
 index.js: ${OBJS} wasmmain.c
-	${CC} ${CFLAGS} ${EMCFLAGS} -o $@ wasmmain.c ${OBJS}
+	${CC} ${CFLAGS} ${EMCFLAGS} ${FINALLINK} -o $@ wasmmain.c ${OBJS}
 	chmod -x index.wasm
 
 res/%.krk: ../modules/%.krk

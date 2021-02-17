@@ -252,10 +252,6 @@ int main() {
 	atexit(krk_freeVM);
 
 	/* Initialize the built-in C modules */
-	BUNDLED(fileio);
-	BUNDLED(dis);
-	BUNDLED(os);
-	BUNDLED(time);
 	BUNDLED(math);
 
 	emscripten_run_script("Module.krkb = [];");

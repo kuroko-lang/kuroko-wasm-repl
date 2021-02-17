@@ -1,4 +1,5 @@
 index.js
 index.wasm
 index.worker.js
+index.wasm.map
 *.krk

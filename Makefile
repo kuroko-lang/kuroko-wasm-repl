@@ -10,7 +10,7 @@ EMCFLAGS += -s WASM=1
 EMCFLAGS += -s EXPORTED_FUNCTIONS='["_krk_call","_main"]'
 EMCFLAGS += -s EXPORTED_RUNTIME_METHODS='["ccall","cwrap"]'
 EMCFLAGS += --use-preload-plugins
-FINALLINK = -g4 --source-map-base 'http://localhost:8080/'
+FINALLINK = -g4 --source-map-base 'http://localhost:8080/' -lidbfs.js
 
 # Threads require special headers to be sent by the server
 # that provides the main page and possibly also the JS/WASM,
@@ -20,7 +20,7 @@ ifeq (1,${ENABLE_THREADS})
     CFLAGS += -DENABLE_THREADING
 endif
 
-all: index.js ${MODS} res/init.krk res/baz.krk
+all: index.js ${MODS} res/init.krk res/baz.krk kuroko.js
 
 %.em.o: %.c ${HEADERS}
 	${CC} ${CFLAGS} ${EMCFLAGS} -c -o $@ $<
@@ -28,6 +28,9 @@ all: index.js ${MODS} res/init.krk res/baz.krk
 index.js: ${OBJS} wasmmain.c
 	${CC} ${CFLAGS} ${EMCFLAGS} ${FINALLINK} -o $@ wasmmain.c ${OBJS}
 	chmod -x index.wasm
+
+kuroko.js: worker.c workerWrapper.js ${OBJS} ${HEADERS}
+	make -f Makefile.worker
 
 res/%.krk: ../modules/%.krk
 	cp $< $@

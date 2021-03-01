@@ -1,0 +1,33 @@
+OBJS = $(patsubst %.c, %.emw.o, $(filter-out ../src/rline.c ../src/kuroko.c,$(sort $(wildcard ../src/*.c))))
+HEADERS = $(wildcard ../src/*.h)
+CC = emcc
+CFLAGS = -O3 -I../src/ -DDEBUG
+# Turn this on if you think you really need it.
+EMCFLAGS  = -s ALLOW_MEMORY_GROWTH=1
+EMCFLAGS += -s BUILD_AS_WORKER=1
+EMCFLAGS += -s WASM=1
+EMCFLAGS += -s EXPORTED_FUNCTIONS='["_krk_run_worker"]'
+EMCFLAGS += --pre-js workerWrapper.js
+EMCFLAGS += --use-preload-plugins
+FINALLINK = -g4 --source-map-base 'http://localhost:8080/' -lidbfs.js
+
+# Threads require special headers to be sent by the server
+# that provides the main page and possibly also the JS/WASM,
+# so unfortunately this isn't going to work in a lot of cases.
+ifeq (1,${ENABLE_THREADS})
+    EMCFLAGS += -pthread
+    CFLAGS += -DENABLE_THREADING
+endif
+
+all: kuroko.js
+
+%.emw.o: %.c ${HEADERS}
+	${CC} ${CFLAGS} ${EMCFLAGS} -c -o $@ $<
+
+kuroko.js: ${OBJS} worker.c workerWrapper.js
+	${CC} ${CFLAGS} ${EMCFLAGS} ${FINALLINK} -o $@ worker.c ${OBJS}
+	chmod -x kuroko.wasm
+
+.PHONY: clean
+clean:
+	@rm -f ../src/*.emw.o kuroko.wasm kuroko.js

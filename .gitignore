@@ -3,3 +3,6 @@ index.wasm
 index.worker.js
 index.wasm.map
 *.krk
+kuroko.js
+kuroko.wasm
+kuroko.wasm.map

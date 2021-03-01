@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <emscripten.h>
+#include <unistd.h>
 #include "kuroko.h"
 #include "vm.h"
 #include "memory.h"
@@ -239,6 +240,73 @@ static KrkValue _jsexec(int argc, KrkValue argv[], int hasKw) {
 	return NONE_VAL();
 }
 
+static void _jsworker_callback(char * data, int size, void * arg) {
+	/* Is this the final result? */
+	if (size > 0 && data[0] == 'x') {
+		KrkObj * callback = arg;
+		krk_push(OBJECT_VAL(callback));
+
+		/* Figure out what to do with it. */
+		if (data[1] == 'S') {
+			krk_push(OBJECT_VAL(krk_copyString(data+2,size-2)));
+		} else if (data[1] == 'I') {
+			int x = atoi(&data[2]);
+			krk_push(INTEGER_VAL(x));
+		} else if (data[1] == 'N') {
+			krk_push(NONE_VAL());
+		}
+		krk_callValue(OBJECT_VAL(callback), 1, 1);
+		krk_runNext();
+	} else if (size > 0 && data[0] == 'O') {
+		fputs(data+1,stdout);
+		fputs("\n",stdout);
+	} else if (size > 0 && data[0] == 'E') {
+		fputs(data+1,stderr);
+		fputs("\n",stderr);
+	} else if (size > 0 && data[0] == 'i') {
+		/* Internal debug info, ignore. */
+	}
+}
+
+static KrkValue _jsrun_worker(int argc, KrkValue argv[], int hasKw) {
+	if (argc < 3 || !IS_STRING(argv[0]) || !IS_STRING(argv[1]) || !IS_OBJECT(argv[2])) {
+		krk_runtimeError(vm.exceptions->typeError, "expected str, str, callback");
+		return NONE_VAL();
+	}
+
+	char * url = AS_CSTRING(argv[0]);
+	char * arg = AS_CSTRING(argv[1]);
+	KrkObj * callback = AS_OBJECT(argv[2]);
+
+	char tmp[1024];
+	getcwd(tmp,1024);
+
+	size_t finalSize = strlen(tmp) + 1 + strlen(arg) + 1;
+	char * finalArg = malloc(finalSize);
+	snprintf(finalArg, finalSize, "%s%c%s", tmp, '\0', arg);
+
+	worker_handle myWorker = emscripten_create_worker(url);
+	emscripten_call_worker(myWorker, "krk_run_worker", finalArg, finalSize, _jsworker_callback, callback);
+
+	{
+		char tmp[1024];
+		sprintf(tmp, "__worker_%d_data", myWorker);
+		krk_attachNamedValue(&krk_currentThread.module->fields, tmp, argv[2]);
+	}
+
+	return INTEGER_VAL(myWorker);
+}
+
+static KrkValue _jsdestroy_worker(int argc, KrkValue argv[], int hasKw) {
+	if (argc != 1 || !IS_INTEGER(argv[0])) {
+		return krk_runtimeError(vm.exceptions->typeError, "Expected int");
+	}
+
+	emscripten_destroy_worker(AS_INTEGER(argv[0]));
+
+	return NONE_VAL();
+}
+
 /**
  * This is built with NO_EXIT_RUNTIME, so when `main` returns none of the
  * normal exit routines are run and the VM stays "active" in the background.
@@ -270,9 +338,11 @@ int main() {
 	krk_finalizeClass(jsObjectClass);
 
 	krk_defineNative(&jsModule->fields, "exec", _jsexec);
+	krk_defineNative(&jsModule->fields, "run_worker", _jsrun_worker);
+	krk_defineNative(&jsModule->fields, "destroy_worker", _jsdestroy_worker);
 
 	/* Set up the interpreter session */
-	krk_startModule("<module>");
+	krk_startModule("__main__");
 	krk_attachNamedValue(&krk_currentThread.module->fields,"__doc__", NONE_VAL());
 
 	return 0;
@@ -286,7 +356,12 @@ int main() {
  * return that to the JavaScript caller for processing.
  */
 char * krk_call(char * src) {
-	KrkValue result = krk_interpret(src, 0, "<stdin>", "<stdin>");
+	krk_resetStack();
+	KrkValue result = krk_interpret(src, "<stdin>");
+	if (krk_currentThread.flags & KRK_THREAD_HAS_EXCEPTION) {
+		krk_dumpTraceback();
+		krk_currentThread.flags &= ~(KRK_THREAD_HAS_EXCEPTION);
+	}
 	if (!IS_NONE(result)) {
 		KrkClass * type = krk_getType(result);
 		krk_push(result);

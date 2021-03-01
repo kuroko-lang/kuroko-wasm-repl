@@ -56,6 +56,9 @@ def codeSample(code):
     let out = '\n'.join([''.join([mappings[f].format(escapeAngles(w)) for w, f in line]) for line in processed])
     return '''<a onclick="insertThis(this)" class="codelink"><code{}>{}</code></a>'''.format(classes, out)
 
+def note(text):
+    return f'<div class="alert alert-warning"><b>Note:</b> {text}</div>'
+
 let tutorials = ['''
 <h1>Welcome to Kuroko!</h1>
 <p>Kuroko is a bytecode-interpreted, dynamic, strongly-typed language with syntax similar to Python.</p>
@@ -71,15 +74,14 @@ let tutorials = ['''
 <p><code>"Hello, world!"</code></p>
 <p>Throughout this tutorial, we'll use <code>print()</code> to see results as we go through each example.</p>
 <p>When you're ready to continue, just type <code>next()</code>!
-''','''
+''',f'''
 <h1>More on Printing...</h1>
 <p>The <code>print()</code> function accepts an arbitrary number of arguments and will print each argument as a string, separated by spaces and ending in a line feed.</p>
 <p><code>print("hello","world",42,3.1415926)</code></p>
 <p>You can customize the separation and ending by passing <i>keyword arguments</i>:</p>
 <p><code>print("hello","world",42,3.1415926,sep=", ",end="!!!\\n")</code></p>
 <p>Don't forget to type <code>next()</code> to continue to the next step in the guide.</p>
-<p><i><b>Note:</b> In this in-browser REPL, text will not be output until a line feed is printed.
-When using Kuroko elsewhere, there may be times when you want to print without outputting a line feed - "end" can be set to an empty string to achive this.</i></p>
+{note('In this in-browser REPL, text will not be output until a line feed is printed. When using Kuroko elsewhere, there may be times when you want to print without outputting a line feed - "end" can be set to an empty string to achive this.')}
 ''','''
 <h1>Basic Types</h1>
 <p>Kuroko's type system is similar to other dynamic languages like Python, JavaScript, <a href="https://craftinginterpreters.com/" target="_blank">Lox</a>, and so on.</p>
@@ -178,7 +180,7 @@ print(x)</code></p>
 <p><code>print((x = x + 1))</code></p>
 <p>Note that we must wrap the assignment in parentheses or it will be interpreted in a function call as a keyword argument, which we'll get to later.</p>
 <p>Kuroko also has shortcut operators like <code>x += 1</code> and <code>x++</code></p>
-''','''
+''',f'''
 <h1>Functions</h1>
 <p>We have already seen multiple functions in use, including <code>print</code> and <code>len</code> - let's find out how to make our own.
 Functions in Kuroko are defined with the <code>def</code> keyword:</p>
@@ -192,9 +194,7 @@ greet("user")
 greet()
 greet("user")</code></p>
 <p>Default arguments can be omitted when the function is called and will be set the value used in the function's definition if they are missing.</p>
-<p><i><b>Note:</b> In Python, default arguments are evaluated once when the function is defined,
-which can lead to potentially unexpected behavior if a mutable value like a list is used.
-In Kuroko, default arguments are evaluated when the function is called.</i></p>
+{note('In Python, default arguments are evaluated once when the function is defined, which can lead to potentially unexpected behavior if a mutable value like a list is used. In Kuroko, default arguments are evaluated when the function is called.')}
 ''','''
 <h1>Scoping in Kuroko</h1>
 <p>Since we've seen how to declare variables, create blocks, and define functions, let's take a brief detour to understand what <i>block scoping</i> means.</p>
@@ -220,7 +220,7 @@ print(globalVal)</code></p>
         let var = 2
         print(var)
     print(var)</code></p>
-''','''
+''',f'''
 <h1>Closures</h1>
 <p>Functions in Kuroko are inherently closures and <i>capture</i> local variables from their enclosing scopes.</p>
 <p>When a function references a local from another function in which its definition is nested (or variables declared within a block),
@@ -242,7 +242,7 @@ c()
 a()
 a()
 a()</code></p>
-<p><i><b>Note:</b> Functions also maintain a reference to the global scope in which they were defined, and will use the same globals table when called, but these values already live on the heap and are not captured by the function.</i></p>
+{note('Functions also maintain a reference to the global scope in which they were defined, and will use the same globals table when called, but these values already live on the heap and are not captured by the function.')}
 ''','''
 <h1>Objects and Classes</h1>
 <p>Objects and classes in Kuroko work a lot like Python or similar languages in that they have an arbitrary and mutable set of fields, which may be methods or other values.</p>
@@ -535,14 +535,14 @@ let f = Foo()
 print(f)
 print([f,f,f])</code></p>
 <p>As in Python, <code>__repr__</code> is intended to provide a canonical string representation which, if possible, should be usable to rereate the object.</p>
-''','''
+''',f'''
 <h1>File I/O</h1>
 <p>The module <code>fileio</code> provides an interface for opening, reading, and writing files, including stdin/stdout/stderr.</p>
 <p><code>import fileio
 let f = fileio.open("/usr/local/lib/kuroko/dummy.krk","r")
 print(f.read())
 f.close()</code></p>
-<p><i><b>Note:</b> The in-browser REPL has a virtual filesystem provided by <a href="https://emscripten.org/">Emscripten</a>, which is where modules seen in the previous sections are defined.</i></p>
+{note('The in-browser REPL has a virtual filesystem provided by <a href="https://emscripten.org/">Emscripten</a>, which is where modules seen in the previous sections are defined.')}
 ''','''
 <h1>Decorators</h1>
 <p>Decorators allow functions and methods to be wrapped.</p>
@@ -689,7 +689,7 @@ let lines
 with f:
     lines = [l.strip() for l in f.readlines()]
 print(f)</code></p>
-''','''
+''',f'''
 <p>If an early return is encountered inside of a with block, the __exit__ method for the context manager will be called before the function returns.</p>
 <p><code>class ContextManager:
     def __init__(title):
@@ -707,7 +707,7 @@ def doesANestedThing():
         print('Should not print')
     print('Should not print')
 print(doesANestedThing())</code></p>
-<p><i><b>Note:</b> The implement of <code>with</code> blocks is incomplete: exceptions raised within a <code>with</code> block which are not also caught within the block will result in the context manager's <code>__exit__</code> method not being called.</i></p>
+{note("The implementation of <code>with</code> blocks is incomplete: exceptions raised within a <code>with</code> block which are not also caught within the block will result in the context manager's <code>__exit__</code> method not being called.")}
 ''','''
 <h1>All done!</h1>
 <p>There's just one more thing to cover: The <code>del</code> statement allows names to be deleted from the global scope or from the attributes table of an object. Let's clean things up:</p>

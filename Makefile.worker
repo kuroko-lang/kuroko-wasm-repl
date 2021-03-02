@@ -7,6 +7,7 @@ EMCFLAGS  = -s ALLOW_MEMORY_GROWTH=1
 EMCFLAGS += -s BUILD_AS_WORKER=1
 EMCFLAGS += -s WASM=1
 EMCFLAGS += -s EXPORTED_FUNCTIONS='["_krk_run_worker"]'
+EMCFLAGS += -s ASYNCIFY
 EMCFLAGS += --pre-js workerWrapper.js
 EMCFLAGS += --use-preload-plugins
 FINALLINK = -g4 --source-map-base 'http://localhost:8080/' -lidbfs.js

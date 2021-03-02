@@ -1,13 +1,28 @@
-function _craftMessage(data) {
+function _craftMessage(data,finalResponse=false) {
   var buf = new Uint8Array(lengthBytesUTF8(data)+1);
   var actualNumBytes = stringToUTF8Array(data, buf, 0, buf.length);
   var transferObject = {
     'callbackId': workerCallbackId,
-    'finalResponse': false,
+    'finalResponse': finalResponse,
     'data': buf
   };
   postMessage(transferObject, [transferObject.data.buffer]);
 }
+
+function messageCallback(msg) {
+  if (typeof msg.data === 'string') {
+    if (msg.data == 'continue') {
+      Module.awakeStatus = 1;
+    } else if (msg.data == 'traceback') {
+      Module.awakeStatus = 2;
+    } else if (msg.data == 'step') {
+      Module.awakeStatus = 3;
+    }
+    return false;
+  }
+}
+addEventListener("message",messageCallback);
+
 var _idbfsSuccess = false;
 var Module = {
   preRun: [function() {

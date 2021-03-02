@@ -8,6 +8,7 @@
 #include "kuroko.h"
 #include "vm.h"
 #include "memory.h"
+#include "util.h"
 
 /**
  * Copied over from the main interpreter; packages the C modules directly.
@@ -71,6 +72,7 @@ EM_JS(int32_t, krk_jsType, (int i), {
 	return 0;
 });
 
+static KrkInstance * jsModule;
 static KrkClass * jsObjectClass;
 
 struct JSObject {
@@ -263,27 +265,46 @@ static void _jsworker_callback(char * data, int size, void * arg) {
 	} else if (size > 0 && data[0] == 'E') {
 		fputs(data+1,stderr);
 		fputs("\n",stderr);
+	} else if (size > 0 && data[0] == 'F') {
+		/* filesystem sync is completed, pull in changes */
+		EM_ASM(
+			window.setTimeout(function () {
+				FS.syncfs(true,function (err) {
+					if (err) { console.log(err); }
+				});
+			},200);
+		);
+	} else if (size > 0 && data[0] == 'd') {
+		KrkValue emModule = NONE_VAL();
+		krk_tableGet(&vm.modules,OBJECT_VAL(S("emscripten")),&emModule);
+		if (!IS_INSTANCE(emModule)) return;
+		KrkValue emCallback = NONE_VAL();
+		krk_tableGet(&AS_INSTANCE(emModule)->fields,OBJECT_VAL(S("debuggerCallback")),&emCallback);
+		if (!IS_OBJECT(emModule)) return;
+		krk_push(OBJECT_VAL(krk_copyString(&data[1],size-1)));
+		krk_callSimple(emCallback, 1, 0);
 	} else if (size > 0 && data[0] == 'i') {
 		/* Internal debug info, ignore. */
 	}
 }
 
 static KrkValue _jsrun_worker(int argc, KrkValue argv[], int hasKw) {
-	if (argc < 3 || !IS_STRING(argv[0]) || !IS_STRING(argv[1]) || !IS_OBJECT(argv[2])) {
-		krk_runtimeError(vm.exceptions->typeError, "expected str, str, callback");
+	if (argc < 4 || !IS_STRING(argv[0]) || !IS_STRING(argv[1]) || !IS_OBJECT(argv[2]) || !IS_STRING(argv[3])) {
+		krk_runtimeError(vm.exceptions->typeError, "expected str, str, callback, str");
 		return NONE_VAL();
 	}
 
 	char * url = AS_CSTRING(argv[0]);
 	char * arg = AS_CSTRING(argv[1]);
 	KrkObj * callback = AS_OBJECT(argv[2]);
+	char * flags = AS_CSTRING(argv[3]);
 
 	char tmp[1024];
 	getcwd(tmp,1024);
 
-	size_t finalSize = strlen(tmp) + 1 + strlen(arg) + 1;
+	size_t finalSize = strlen(tmp) + 1 + strlen(flags) + 1 + strlen(arg) + 1;
 	char * finalArg = malloc(finalSize);
-	snprintf(finalArg, finalSize, "%s%c%s", tmp, '\0', arg);
+	snprintf(finalArg, finalSize, "%s%c%s%c%s", tmp, '\0', flags, '\0', arg);
 
 	worker_handle myWorker = emscripten_create_worker(url);
 	emscripten_call_worker(myWorker, "krk_run_worker", finalArg, finalSize, _jsworker_callback, callback);
@@ -291,7 +312,7 @@ static KrkValue _jsrun_worker(int argc, KrkValue argv[], int hasKw) {
 	{
 		char tmp[1024];
 		sprintf(tmp, "__worker_%d_data", myWorker);
-		krk_attachNamedValue(&krk_currentThread.module->fields, tmp, argv[2]);
+		krk_attachNamedValue(&jsModule->fields, tmp, argv[2]);
 	}
 
 	return INTEGER_VAL(myWorker);
@@ -324,7 +345,7 @@ int main() {
 
 	emscripten_run_script("Module.krkb = [];");
 
-	KrkInstance * jsModule = krk_newInstance(vm.baseClasses->moduleClass);
+	jsModule = krk_newInstance(vm.baseClasses->moduleClass);
 	krk_attachNamedObject(&vm.modules, "js", (KrkObj*)jsModule);
 	jsObjectClass = krk_newClass(krk_copyString("JSObject",8), vm.baseClasses->objectClass);
 	jsObjectClass->allocSize = sizeof(struct JSObject);

@@ -17,6 +17,8 @@ function messageCallback(msg) {
       Module.awakeStatus = 2;
     } else if (msg.data == 'step') {
       Module.awakeStatus = 3;
+    } else if (msg.data == 'quit') {
+      Module.awakeStatus = 4;
     }
     return false;
   }

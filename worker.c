@@ -39,10 +39,8 @@ EM_JS(void, report_debugger, (const char *str), {
 	_craftMessage("d" + UTF8ToString(str));
 });
 
-int worker_debugger_callback(void) {
+int worker_debugger_callback(KrkCallFrame * frame) {
 	reset_status();
-
-	KrkCallFrame* frame = &krk_currentThread.frames[krk_currentThread.frameCount - 1];
 
 	char tmp[4096];
 	sprintf(tmp,"{"
@@ -66,7 +64,19 @@ int worker_debugger_callback(void) {
 		if (result != 0) break;
 		emscripten_sleep(20);
 	} while (1);
-	return result;
+
+	switch (result) {
+		case 1:
+			return KRK_DEBUGGER_CONTINUE;
+		case 2:
+			return KRK_DEBUGGER_RAISE;
+		case 3:
+			return KRK_DEBUGGER_STEP;
+		case 4:
+			return KRK_DEBUGGER_QUIT;
+		default:
+			return KRK_DEBUGGER_CONTINUE;
+	}
 }
 
 EM_JS(void, resume_status, (), {
@@ -88,7 +98,6 @@ void krk_run_worker(char * data, int size) {
 	while (*data) {
 		switch (*data) {
 			case 's':
-				flags |= KRK_THREAD_ENABLE_TRACING;
 				flags |= KRK_THREAD_SINGLE_STEP;
 				break;
 		}
@@ -110,7 +119,7 @@ void krk_run_worker(char * data, int size) {
 
 	emscripten_worker_respond_provisionally(X("iWorker is started."));
 
-	krk_externalDebuggerHook = worker_debugger_callback;
+	krk_debug_registerCallback(worker_debugger_callback);
 
 	KrkValue result = krk_runfile(data,data);
 

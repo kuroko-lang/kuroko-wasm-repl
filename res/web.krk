@@ -498,12 +498,12 @@ for up, down in TupleGenerator():
     print(up,down)</code></p>
 ''','''
 <h1>Subscripting (Indexing)</h1>
-<p>Objects with <code>__get__</code> and <code>__set__</code> methods can be used with square brackets <code>[]</code>:</p>
+<p>Objects with <code>__getitem__</code> and <code>__setitem__</code> methods can be used with square brackets <code>[]</code>:</p>
 <p><code>class Foo:
-    def __get__(ind):
+    def __getitem__(ind):
         print("You asked for ind=" + ind)
         return ind * 5
-    def __set__(ind, val):
+    def __setitem__(ind, val):
         print("You asked to set ind=" + ind + " to " + val)
 let f = Foo()
 print(f[4])

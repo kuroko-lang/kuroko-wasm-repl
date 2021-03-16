@@ -79,9 +79,37 @@ int worker_debugger_callback(KrkCallFrame * frame) {
 	}
 }
 
-EM_JS(void, resume_status, (), {
-	Module.awakeStatus = 1;
+EM_JS(void, report_input, (const char *str), {
+	waitingForInput = 1;
+	_craftMessage("i" + UTF8ToString(str));
 });
+
+EM_JS(char *, get_stdin_line, (void), {
+	var bytes = lengthBytesUTF8(Module.stdin_line)+1;
+	var heapObj = _malloc(bytes);
+	stringToUTF8(Module.stdin_line, heapObj, bytes);
+	return heapObj;
+});
+
+static KrkValue input(int argc, KrkValue argv[], int hasKw) {
+	if (argc) {
+		if (!IS_STRING(argv[0])) return krk_runtimeError(vm.exceptions->typeError, "expected str");
+		report_input(AS_CSTRING(argv[0]));
+	} else {
+		report_input("");
+	}
+
+	int result = 0;
+	do {
+		result = check_status();
+		if (result != 0) break;
+		emscripten_sleep(20);
+	} while (1);
+
+	char * str = get_stdin_line();
+
+	return OBJECT_VAL(krk_takeString(str,strlen(str)));
+}
 
 /**
  * This is built with NO_EXIT_RUNTIME, so when `main` returns none of the
@@ -116,8 +144,7 @@ void krk_run_worker(char * data, int size) {
 	/* Set up the interpreter session */
 	krk_startModule("__main__");
 	krk_attachNamedValue(&krk_currentThread.module->fields,"__doc__", NONE_VAL());
-
-	emscripten_worker_respond_provisionally(X("iWorker is started."));
+	krk_defineNative(&vm.builtins->fields, "input", input);
 
 	krk_debug_registerCallback(worker_debugger_callback);
 

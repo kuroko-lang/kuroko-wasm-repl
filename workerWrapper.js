@@ -9,8 +9,16 @@ function _craftMessage(data,finalResponse=false) {
   postMessage(transferObject, [transferObject.data.buffer]);
 }
 
+var waitingForInput = 0;
+
 function messageCallback(msg) {
   if (typeof msg.data === 'string') {
+    if (waitingForInput) {
+      waitingForInput = 0;
+      Module.stdin_line = msg.data;
+      Module.awakeStatus = 1;
+      return false;
+    }
     if (msg.data == 'continue') {
       Module.awakeStatus = 1;
     } else if (msg.data == 'traceback') {

@@ -284,7 +284,15 @@ static void _jsworker_callback(char * data, int size, void * arg) {
 		krk_push(OBJECT_VAL(krk_copyString(&data[1],size-1)));
 		krk_callSimple(emCallback, 1, 0);
 	} else if (size > 0 && data[0] == 'i') {
-		/* Internal debug info, ignore. */
+		/* Input request */
+		KrkValue emModule = NONE_VAL();
+		krk_tableGet(&vm.modules,OBJECT_VAL(S("emscripten")),&emModule);
+		if (!IS_INSTANCE(emModule)) return;
+		KrkValue emCallback = NONE_VAL();
+		krk_tableGet(&AS_INSTANCE(emModule)->fields,OBJECT_VAL(S("inputCallback")),&emCallback);
+		if (!IS_OBJECT(emModule)) return;
+		krk_push(OBJECT_VAL(krk_copyString(&data[1],strlen(&data[1]))));
+		krk_callSimple(emCallback, 1, 0);
 	}
 }
 

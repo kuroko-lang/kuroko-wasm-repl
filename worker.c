@@ -11,6 +11,7 @@
 #include "kuroko.h"
 #include "vm.h"
 #include "debug.h"
+#include "util.h"
 
 /**
  * Copied over from the main interpreter; packages the C modules directly.
@@ -80,6 +81,7 @@ int worker_debugger_callback(KrkCallFrame * frame) {
 }
 
 EM_JS(void, report_input, (const char *str), {
+	reset_status();
 	waitingForInput = 1;
 	_craftMessage("i" + UTF8ToString(str));
 });
@@ -91,6 +93,17 @@ EM_JS(char *, get_stdin_line, (void), {
 	return heapObj;
 });
 
+static char * get_line(void) {
+	int result = 0;
+	do {
+		result = check_status();
+		if (result != 0) break;
+		emscripten_sleep(20);
+	} while (1);
+
+	return get_stdin_line();
+}
+
 static KrkValue input(int argc, KrkValue argv[], int hasKw) {
 	if (argc) {
 		if (!IS_STRING(argv[0])) return krk_runtimeError(vm.exceptions->typeError, "expected str");
@@ -99,14 +112,7 @@ static KrkValue input(int argc, KrkValue argv[], int hasKw) {
 		report_input("");
 	}
 
-	int result = 0;
-	do {
-		result = check_status();
-		if (result != 0) break;
-		emscripten_sleep(20);
-	} while (1);
-
-	char * str = get_stdin_line();
+	char * str = get_line();
 
 	return OBJECT_VAL(krk_takeString(str,strlen(str)));
 }
@@ -117,6 +123,7 @@ static KrkValue input(int argc, KrkValue argv[], int hasKw) {
  */
 void krk_run_worker(char * data, int size) {
 	int flags = 0;
+	int interactive = 0;
 
 	/* Retrieve cwd from caller */
 	chdir(data);
@@ -127,6 +134,9 @@ void krk_run_worker(char * data, int size) {
 		switch (*data) {
 			case 's':
 				flags |= KRK_THREAD_SINGLE_STEP;
+				break;
+			case 'i':
+				interactive = 1;
 				break;
 		}
 		data++;
@@ -148,20 +158,70 @@ void krk_run_worker(char * data, int size) {
 
 	krk_debug_registerCallback(worker_debugger_callback);
 
-	KrkValue result = krk_runfile(data,data);
+	if (!interactive) {
+		KrkValue result = krk_runfile(data,data);
 
-	if (IS_STRING(result)) {
-		char * tmp = malloc(AS_STRING(result)->length + 2);
-		tmp[0] = 'x';
-		tmp[1] = 'S';
-		memcpy(tmp+2,AS_CSTRING(result),AS_STRING(result)->length);
-		emscripten_worker_respond_provisionally(tmp, AS_STRING(result)->length+2);
-		free(tmp);
-	} else if (IS_INTEGER(result)) {
-		char tmp[100];
-		sprintf(tmp, "xI%d", (int)AS_INTEGER(result));
-		emscripten_worker_respond_provisionally(tmp,strlen(tmp)+1);
+		if (IS_STRING(result)) {
+			char * tmp = malloc(AS_STRING(result)->length + 2);
+			tmp[0] = 'x';
+			tmp[1] = 'S';
+			memcpy(tmp+2,AS_CSTRING(result),AS_STRING(result)->length);
+			emscripten_worker_respond_provisionally(tmp, AS_STRING(result)->length+2);
+			free(tmp);
+		} else if (IS_INTEGER(result)) {
+			char tmp[100];
+			sprintf(tmp, "xI%d", (int)AS_INTEGER(result));
+			emscripten_worker_respond_provisionally(tmp,strlen(tmp)+1);
+		} else {
+			emscripten_worker_respond_provisionally("xN",2);
+		}
 	} else {
+		KrkValue systemModule;
+		if (krk_tableGet(&vm.modules, OBJECT_VAL(krk_copyString("kuroko",6)), &systemModule)) {
+			KrkValue version, buildenv, builddate;
+			krk_tableGet(&AS_INSTANCE(systemModule)->fields, OBJECT_VAL(krk_copyString("version",7)), &version);
+			krk_tableGet(&AS_INSTANCE(systemModule)->fields, OBJECT_VAL(krk_copyString("buildenv",8)), &buildenv);
+			krk_tableGet(&AS_INSTANCE(systemModule)->fields, OBJECT_VAL(krk_copyString("builddate",9)), &builddate);
+
+			fprintf(stdout, "Kuroko %s (%s) with %s\n",
+				AS_CSTRING(version), AS_CSTRING(builddate), AS_CSTRING(buildenv));
+		}
+		fprintf(stdout, "Type `help` for guidance, `exit` to quit, `license` for copyright information.\n");
+
+		while (1) {
+			report_input(">>> ");
+			char * allData = get_line();
+			fprintf(stdout, ">>> %s\n", allData);
+
+			if (!strcmp(allData, "exit()") || !strcmp(allData, "quit()") ||
+				!strcmp(allData, "exit") || !strcmp(allData, "quit")) {
+				break;
+			}
+
+			/* Run it... */
+			KrkValue result = krk_interpret(allData, "<stdin>");
+			if (krk_currentThread.flags & KRK_THREAD_HAS_EXCEPTION) {
+				krk_currentThread.flags &= ~(KRK_THREAD_HAS_EXCEPTION);
+			}
+			if (!IS_NONE(result)) {
+				KrkClass * type = krk_getType(result);
+				const char * formatStr = " \033[1;90m=> %s\033[0m\n";
+				if (type->_reprer) {
+					krk_push(result);
+					result = krk_callSimple(OBJECT_VAL(type->_reprer), 1, 0);
+				} else if (type->_tostr) {
+					krk_push(result);
+					result = krk_callSimple(OBJECT_VAL(type->_tostr), 1, 0);
+				}
+				if (!IS_STRING(result)) {
+					fprintf(stdout, " \033[1;91m=> Unable to produce representation for value.\033[0m\n");
+				} else {
+					fprintf(stdout, formatStr, AS_CSTRING(result));
+				}
+			}
+			krk_resetStack();
+			free(allData);
+		}
 		emscripten_worker_respond_provisionally("xN",2);
 	}
 

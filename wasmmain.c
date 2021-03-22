@@ -5,10 +5,10 @@
 #include <string.h>
 #include <emscripten.h>
 #include <unistd.h>
-#include "kuroko.h"
-#include "vm.h"
-#include "memory.h"
-#include "util.h"
+#include <kuroko/kuroko.h>
+#include <kuroko/vm.h>
+#include <kuroko/memory.h>
+#include <kuroko/util.h>
 
 /**
  * Copied over from the main interpreter; packages the C modules directly.

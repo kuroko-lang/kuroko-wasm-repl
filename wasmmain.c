@@ -360,10 +360,10 @@ int main() {
 	jsObjectClass->_ongcscan = _jsobject_ongcscan;
 	krk_attachNamedObject(&jsModule->fields, "JSObject", (KrkObj*)jsObjectClass);
 	/* Okay, how do we want to do this... */
-	krk_defineNative(&jsObjectClass->methods, ".__init__", _jsobject_init);
-	krk_defineNative(&jsObjectClass->methods, ".__getattr__", _jsobject_getattr);
-	krk_defineNative(&jsObjectClass->methods, ".__dir__", _jsobject_dir);
-	krk_defineNative(&jsObjectClass->methods, ".__call__", _jsobject_call);
+	krk_defineNative(&jsObjectClass->methods, "__init__", _jsobject_init);
+	krk_defineNative(&jsObjectClass->methods, "__getattr__", _jsobject_getattr);
+	krk_defineNative(&jsObjectClass->methods, "__dir__", _jsobject_dir);
+	krk_defineNative(&jsObjectClass->methods, "__call__", _jsobject_call);
 	krk_finalizeClass(jsObjectClass);
 
 	krk_defineNative(&jsModule->fields, "exec", _jsexec);

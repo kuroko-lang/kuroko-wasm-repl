@@ -4,7 +4,7 @@ MODS    = $(patsubst ../modules/%.krk, res/%.krk, $(sort $(wildcard ../modules/*
 HEADERS = $(wildcard ../src/*.h ../src/kuroko/*.h)
 
 CC = emcc
-CFLAGS = -O3 -I../src/ -DKRK_ENABLE_DEBUG
+CFLAGS = -O3 -I../src/
 # Turn this on if you think you really need it.
 EMCFLAGS  = -s ALLOW_MEMORY_GROWTH=1
 EMCFLAGS += -s WASM=1

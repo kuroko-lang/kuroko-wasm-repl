@@ -204,7 +204,7 @@ static KrkValue _jsobject_call(int argc, KrkValue argv[], int hasKw) {
 	} else if (argc == 2) {
 		KrkClass * type = krk_getType(argv[1]);
 		krk_push(argv[1]);
-		KrkValue repr = krk_callSimple(OBJECT_VAL(type->_reprer), 1, 0);
+		KrkValue repr = krk_callDirect(type->_reprer, 1);
 		krk_push(repr);
 		char * tmp = malloc(AS_STRING(repr)->length + AS_STRING(jsname)->length + 100);
 		sprintf(tmp, "(function (){try {\n%s(%s)\n} catch(e){Module.krkerr=e; return 1;} return 0;})()",AS_CSTRING(jsname), AS_CSTRING(repr));
@@ -281,8 +281,9 @@ static void _jsworker_callback(char * data, int size, void * arg) {
 		KrkValue emCallback = NONE_VAL();
 		krk_tableGet(&AS_INSTANCE(emModule)->fields,OBJECT_VAL(S("debuggerCallback")),&emCallback);
 		if (!IS_OBJECT(emModule)) return;
+		krk_push(emCallback);
 		krk_push(OBJECT_VAL(krk_copyString(&data[1],size-1)));
-		krk_callSimple(emCallback, 1, 0);
+		krk_callStack(1);
 	} else if (size > 0 && data[0] == 'i') {
 		/* Input request */
 		KrkValue emModule = NONE_VAL();
@@ -291,8 +292,9 @@ static void _jsworker_callback(char * data, int size, void * arg) {
 		KrkValue emCallback = NONE_VAL();
 		krk_tableGet(&AS_INSTANCE(emModule)->fields,OBJECT_VAL(S("inputCallback")),&emCallback);
 		if (!IS_OBJECT(emModule)) return;
+		krk_push(emCallback);
 		krk_push(OBJECT_VAL(krk_copyString(&data[1],strlen(&data[1]))));
-		krk_callSimple(emCallback, 1, 0);
+		krk_callStack(1);
 	}
 }
 
@@ -394,7 +396,7 @@ char * krk_call(char * src) {
 	if (!IS_NONE(result)) {
 		KrkClass * type = krk_getType(result);
 		krk_push(result);
-		result = krk_callSimple(OBJECT_VAL(type->_reprer), 1, 0);
+		result = krk_callDirect(type->_reprer, 1);
 		krk_resetStack();
 		return AS_CSTRING(result);
 	}

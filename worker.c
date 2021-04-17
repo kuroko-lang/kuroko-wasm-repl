@@ -206,10 +206,10 @@ void krk_run_worker(char * data, int size) {
 				const char * formatStr = " \033[1;90m=> %s\033[0m\n";
 				if (type->_reprer) {
 					krk_push(result);
-					result = krk_callSimple(OBJECT_VAL(type->_reprer), 1, 0);
+					result = krk_callDirect(type->_reprer, 1);
 				} else if (type->_tostr) {
 					krk_push(result);
-					result = krk_callSimple(OBJECT_VAL(type->_tostr), 1, 0);
+					result = krk_callDirect(type->_tostr, 1);
 				}
 				if (!IS_STRING(result)) {
 					fprintf(stdout, " \033[1;91m=> Unable to produce representation for value.\033[0m\n");

@@ -1,4 +1,4 @@
-OBJS    = $(patsubst %.c, %.em.o, $(filter-out ../src/rline.c ../src/kuroko.c,$(sort $(wildcard ../src/*.c))))
+OBJS    = $(patsubst %.c, %.em.o, $(filter-out ../src/rline.c ../src/kuroko.c,$(sort $(wildcard ../src/*.c ../src/modules/*.c))))
 OBJS_W  = $(patsubst %.em.o, %.emw.o, $(OBJS))
 MODS    = $(patsubst ../modules/%.krk, res/%.krk, $(sort $(wildcard ../modules/*.krk)))
 HEADERS = $(wildcard ../src/*.h ../src/kuroko/*.h)

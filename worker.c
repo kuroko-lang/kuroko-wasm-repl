@@ -148,6 +148,7 @@ void krk_run_worker(char * data, int size) {
 
 	/* Initialize the built-in C modules */
 	BUNDLED(math);
+	BUNDLED(random);
 
 	/* Set up the interpreter session */
 	krk_startModule("__main__");

@@ -352,6 +352,7 @@ int main() {
 
 	/* Initialize the built-in C modules */
 	BUNDLED(math);
+	BUNDLED(random);
 
 	emscripten_run_script("Module.krkb = [];");
 

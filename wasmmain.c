@@ -395,6 +395,7 @@ char * krk_call(char * src) {
 		krk_currentThread.flags &= ~(KRK_THREAD_HAS_EXCEPTION);
 	}
 	if (!IS_NONE(result)) {
+		krk_attachNamedValue(&vm.builtins->fields, "_", result);
 		KrkClass * type = krk_getType(result);
 		krk_push(result);
 		result = krk_callDirect(type->_reprer, 1);

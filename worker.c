@@ -203,6 +203,7 @@ void krk_run_worker(char * data, int size) {
 				krk_currentThread.flags &= ~(KRK_THREAD_HAS_EXCEPTION);
 			}
 			if (!IS_NONE(result)) {
+				krk_attachNamedValue(&vm.builtins->fields, "_", result);
 				KrkClass * type = krk_getType(result);
 				const char * formatStr = " \033[1;90m=> %s\033[0m\n";
 				if (type->_reprer) {

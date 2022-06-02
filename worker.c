@@ -102,7 +102,7 @@ static char * get_line(void) {
 	return get_stdin_line();
 }
 
-static KrkValue input(int argc, KrkValue argv[], int hasKw) {
+static KrkValue input(int argc, const KrkValue argv[], int hasKw) {
 	if (argc) {
 		if (!IS_STRING(argv[0])) return krk_runtimeError(vm.exceptions->typeError, "expected str");
 		report_input(AS_CSTRING(argv[0]));

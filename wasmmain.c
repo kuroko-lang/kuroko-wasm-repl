@@ -84,7 +84,7 @@ static void _jsobject_ongcscan(KrkInstance * self) {
 	krk_markObject((KrkObj*)((struct JSObject *)self)->str);
 }
 
-static KrkValue _jsobject_init(int argc, KrkValue argv[], int hasKw) {
+static KrkValue _jsobject_init(int argc, const KrkValue argv[], int hasKw) {
 	if (argc != 2) {
 		krk_runtimeError(vm.exceptions->argumentError, "Need a string argument of an object to build on");
 		return NONE_VAL();
@@ -127,7 +127,7 @@ static KrkValue _jsobject_init(int argc, KrkValue argv[], int hasKw) {
 	return OBJECT_VAL(self);
 }
 
-static KrkValue _jsobject_dir(int argc, KrkValue argv[], int hasKw) {
+static KrkValue _jsobject_dir(int argc, const KrkValue argv[], int hasKw) {
 	KrkInstance * self = AS_INSTANCE(argv[0]);
 	KrkValue outputList = krk_dirObject(argc,argv,hasKw);
 	krk_push(outputList);
@@ -147,7 +147,7 @@ static KrkValue _jsobject_dir(int argc, KrkValue argv[], int hasKw) {
 	return outputList;
 }
 
-static KrkValue _jsobject_getattr(int argc, KrkValue argv[], int hasKw) {
+static KrkValue _jsobject_getattr(int argc, const KrkValue argv[], int hasKw) {
 	if (argc != 2) {
 		krk_runtimeError(vm.exceptions->argumentError, "Need a string argument of an object to build on");
 		return NONE_VAL();
@@ -189,7 +189,7 @@ static KrkValue _jsobject_getattr(int argc, KrkValue argv[], int hasKw) {
 	}
 }
 
-static KrkValue _jsobject_call(int argc, KrkValue argv[], int hasKw) {
+static KrkValue _jsobject_call(int argc, const KrkValue argv[], int hasKw) {
 	KrkInstance * self = AS_INSTANCE(argv[0]);
 	KrkValue index;
 	krk_tableGet(&self->fields, OBJECT_VAL(krk_copyString("__index__",9)), &index);
@@ -224,7 +224,7 @@ static KrkValue _jsobject_call(int argc, KrkValue argv[], int hasKw) {
 	}
 }
 
-static KrkValue _jsexec(int argc, KrkValue argv[], int hasKw) {
+static KrkValue _jsexec(int argc, const KrkValue argv[], int hasKw) {
 	if (argc != 1 || !IS_STRING(argv[0])) {
 		krk_runtimeError(vm.exceptions->typeError, "must be string");
 		return NONE_VAL();
@@ -298,7 +298,7 @@ static void _jsworker_callback(char * data, int size, void * arg) {
 	}
 }
 
-static KrkValue _jsrun_worker(int argc, KrkValue argv[], int hasKw) {
+static KrkValue _jsrun_worker(int argc, const KrkValue argv[], int hasKw) {
 	if (argc < 4 || !IS_STRING(argv[0]) || !IS_STRING(argv[1]) || !IS_OBJECT(argv[2]) || !IS_STRING(argv[3])) {
 		krk_runtimeError(vm.exceptions->typeError, "expected str, str, callback, str");
 		return NONE_VAL();
@@ -328,7 +328,7 @@ static KrkValue _jsrun_worker(int argc, KrkValue argv[], int hasKw) {
 	return INTEGER_VAL(myWorker);
 }
 
-static KrkValue _jsdestroy_worker(int argc, KrkValue argv[], int hasKw) {
+static KrkValue _jsdestroy_worker(int argc, const KrkValue argv[], int hasKw) {
 	if (argc != 1 || !IS_INTEGER(argv[0])) {
 		return krk_runtimeError(vm.exceptions->typeError, "Expected int");
 	}

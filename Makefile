@@ -34,8 +34,8 @@ all: index.js ${MODS} res/init.krk res/baz.krk kuroko.js
 %.em.o: %.c ${HEADERS}
 	${CC} ${CFLAGS} ${EMCFLAGS} ${EMCFLAGS_MAIN} -c -o $@ $<
 
-index.js: ${OBJS} wasmmain.c
-	${CC} ${CFLAGS} ${EMCFLAGS} ${EMCFLAGS_MAIN} ${FINALLINK} -o $@ wasmmain.c ${OBJS}
+index.js: wasmmain.c js.em.o ${OBJS}
+	${CC} ${CFLAGS} ${EMCFLAGS} ${EMCFLAGS_MAIN} ${FINALLINK} -o $@ $^
 	chmod -x index.wasm
 
 %.emw.o: %.c ${HEADERS}
@@ -56,8 +56,8 @@ res/baz.krk: ../modules/foo/bar/baz.krk
 
 .PHONY: clean
 clean:
-	@rm -f ../src/*.em.o index.wasm index.js
-	@rm -f ../src/*.emw.o kuroko.wasm kuroko.js
+	@rm -f js.em.o ../src/*.em.o ../src/modules/*.em.o index.wasm index.js
+	@rm -f ../src/*.emw.o ../src/modules/*.emw.o kuroko.wasm kuroko.js
 
 .PHONY: deploy
 deploy:

@@ -1,9 +1,11 @@
 import fileio
 import syntax.highlighter
-from js import exec, JSObject
+from js import document
 
 def writeHTML(string):
-    exec("var __tmp=document.createElement('div'); __tmp.innerHTML = `{}`; document.getElementById('container').appendChild(__tmp);".format(string))
+    let d = document.createElement('div')
+    d.innerHTML = string
+    document.getElementById('container').appendChild(d)
 
 def write(string):
     writeHTML('<div class="inset">{}</div>'.format(string))
@@ -22,10 +24,9 @@ def nextButton():
     return '''<p class="nextbutton"><a onclick="insertNext()" class="codelink"><code>next()</code></a></p>'''
 
 let escapes = {
+    '&': '&amp;',
     '<': '&lt;',
     '>': '&gt;',
-    '\\': '\\\\', # This is for Javascript reasons.
-    '`': '\\`',
 }
 
 def escapeAngles(input):

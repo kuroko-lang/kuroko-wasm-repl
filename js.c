@@ -1,8 +1,7 @@
 /**
  * @brief JS-KRK interaction
  *
- * This is partial port of Hiwire from Pyodide, after I failed terribly
- * at doing one of these myself a while ago.
+ * This is a partial port of Hiwire from Pyodide.
  *
  * @see https://github.com/pyodide/pyodide/blob/main/src/core/hiwire.c
  */
@@ -28,7 +27,6 @@ EMSCRIPTEN_KEEPALIVE const JsRef Js_false = ((JsRef)(6));
 EMSCRIPTEN_KEEPALIVE const JsRef Js_null = ((JsRef)(8));
 EMSCRIPTEN_KEEPALIVE const JsRef Js_novalue = ((JsRef)(10));
 
-/* This is a partial port of hiwire */
 EM_JS(int, js_krk_init, (), {
 	let _hiwire = {
 		objects: new Map(),

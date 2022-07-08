@@ -116,6 +116,8 @@ EM_JS(int, js_krk_init, (), {
 		return result;
 	};
 
+	Hiwire.registry = new FinalizationRegistry(_krk_cleanup);
+
 	return 0;
 });
 
@@ -125,6 +127,38 @@ EM_JS(JsRef, hiwire_int, (int val), {
 
 EM_JS(JsRef, hiwire_object, (), {
 	return Hiwire.new_value({});
+});
+
+EM_JS(JsRef, hiwire_krk_wrapper, (int id), {
+	let jsobj = function() {
+		let argsid = Hiwire.new_value(arguments);
+		let resid = _krk_call_args(id, argsid);
+		Hiwire.decref(argsid);
+		if (resid != 0) {
+			let output = Hiwire.get_value(resid);
+			Hiwire.decref(resid);
+			return output;
+		}
+	};
+	jsobj.__krk__ = true;
+	jsobj.__id__ = id;
+	Hiwire.registry.register(jsobj, id);
+	return Hiwire.new_value(jsobj);
+});
+
+EM_JS(int, hiwire_out_krk, (JsRef idval), {
+	let jsobj = Hiwire.get_value(idval);
+	return jsobj.__id__;
+});
+
+EM_JS(int, hiwire_args_count, (JsRef idval), {
+	let jsobj = Hiwire.get_value(idval);
+	return jsobj.length;
+});
+
+EM_JS(JsRef, hiwire_args_get, (JsRef idval, int arg), {
+	let jsobj = Hiwire.get_value(idval);
+	return Hiwire.new_value(jsobj[arg]);
 });
 
 EM_JS(JsRef, hiwire_float, (double val), {
@@ -269,6 +303,14 @@ EM_JS(int, obj_isnumber, (JsRef idobj), {
 	return 0;
 });
 
+EM_JS(int, obj_iskrk, (JsRef idobj), {
+	let jsobj = Hiwire.get_value(idobj);
+	if (typeof jsobj === 'function') {
+		return jsobj.hasOwnProperty('__krk__') && jsobj.hasOwnProperty('__id__');
+	}
+	return 0;
+});
+
 EM_JS(JsRef, JsArray_New, (), {
 	return Hiwire.new_value([]);
 });
@@ -299,6 +341,12 @@ static void _jsobject_ongcsweep(KrkInstance * self) {
 #define CURRENT_NAME  self
 #define IS_JSObject(o) (krk_isInstanceOf(o, JSObject))
 #define AS_JSObject(o) ((struct JSObject*)AS_OBJECT(o))
+
+#define IS_method(o)     IS_BOUND_METHOD(o)
+#define IS_function(o)   (IS_CLOSURE(o)|IS_NATIVE(o))
+static KrkValue _objToId;
+static KrkValue _objects;
+static uint32_t counter = 0;
 
 /* Generally based on js2python */
 static KrkValue fromJs(JsRef ref, JsRef this_) {
@@ -338,6 +386,20 @@ static KrkValue fromJs(JsRef ref, JsRef this_) {
 		return krk_pop();
 	}
 
+	if (obj_iskrk(ref)) {
+		/* Extract value, and decref */
+		KrkValue id = INTEGER_VAL(hiwire_out_krk(ref));
+		KrkValue objList;
+		if (krk_tableGet(AS_DICT(_objects), id, &objList)) {
+			krk_push(AS_LIST(objList)->values[0]);
+			hiwire_decref(ref);
+			return krk_pop();
+		} else {
+			hiwire_decref(ref);
+			return krk_runtimeError(vm.exceptions->typeError, "invalid object?\n");
+		}
+	}
+
 	struct JSObject * outVal = (void*)krk_newInstance(JSObject);
 	outVal->js = ref;
 
@@ -375,6 +437,30 @@ static JsRef fromKrk(KrkValue val) {
 			hiwire_decref(entry);
 		}
 		return array;
+	} else if (IS_function(val) || IS_method(val)) {
+		KrkValue id;
+		if (krk_tableGet(AS_DICT(_objToId), val, &id)) {
+			/* Already exists, increment */
+			KrkValue objList;
+			krk_tableGet(AS_DICT(_objects), id, &objList);
+			AS_LIST(objList)->values[1] = INTEGER_VAL(AS_INTEGER(AS_LIST(objList)->values[1])+1);
+			/* return id */
+		} else {
+			/* Make a new one */
+			KrkValue garbage;
+			while (krk_tableGet(AS_DICT(_objects), INTEGER_VAL(counter), &garbage)) {
+				counter++;
+			}
+			id = INTEGER_VAL(counter);
+
+			krk_push(krk_list_of(2,(KrkValue[]){ val, INTEGER_VAL(1)},0));
+			krk_tableSet(AS_DICT(_objects), id, krk_peek(0));
+			krk_pop();
+			krk_tableSet(AS_DICT(_objToId), val, id);
+		}
+
+		/* Now we need to wrap the value */
+		return hiwire_krk_wrapper(AS_INTEGER(id));
 	} else {
 		krk_runtimeError(vm.exceptions->typeError, "Unable to convert '%s' to JSObject\n", krk_typeName(val));
 		return 0;
@@ -535,6 +621,39 @@ KRK_Method(JSObject,__getitem__) {
 	return fromJs(val,0);
 }
 
+EMSCRIPTEN_KEEPALIVE int krk_cleanup(int index) {
+	KrkValue id = INTEGER_VAL(index);
+	KrkValue objList;
+	if (krk_tableGet(AS_DICT(_objects), id, &objList)) {
+		int count = AS_INTEGER(AS_LIST(objList)->values[1]);
+		if (count == 1) {
+			KrkValue val   = AS_LIST(objList)->values[0];
+			krk_tableDelete(AS_DICT(_objects), id);
+			krk_tableDelete(AS_DICT(_objToId), val);
+		} else {
+			AS_LIST(objList)->values[1] = INTEGER_VAL(count-1);
+		}
+	}
+
+	return 0;
+}
+
+EMSCRIPTEN_KEEPALIVE JsRef krk_call_args(int krkindex, JsRef jsargsindex) {
+	int num_args = hiwire_args_count(jsargsindex);
+	KrkValue id = INTEGER_VAL(krkindex);
+	KrkValue objList;
+	if (krk_tableGet(AS_DICT(_objects), id, &objList)) {
+		krk_push(AS_LIST(objList)->values[0]);
+		for (int i = 0; i < num_args; ++i) {
+			krk_push(fromJs(hiwire_args_get(jsargsindex, i), 0));
+		}
+		return fromKrk(krk_callStack(num_args));
+	}
+
+	return 0;
+}
+
+
 /**
  * Worker interfaces
  *
@@ -644,6 +763,11 @@ void init_jsModule(void) {
 	krk_attachNamedObject(&vm.modules, "js", (KrkObj*)jsModule);
 	krk_attachNamedObject(&jsModule->fields, "__name__", (KrkObj*)S("js"));
 	krk_attachNamedValue(&jsModule->fields, "__file__", NONE_VAL());
+
+	_objToId = krk_dict_of(0,NULL,0);
+	krk_attachNamedValue(&jsModule->fields, "__cache_objToId__", _objToId);
+	_objects = krk_dict_of(0,NULL,0);
+	krk_attachNamedValue(&jsModule->fields, "__cache_objects__", _objects);
 
 	js_krk_init();
 

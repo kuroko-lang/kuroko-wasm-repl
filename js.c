@@ -84,7 +84,7 @@ EM_JS(int, js_krk_init, (), {
 	Hiwire.get_value = function(idval) {
 		if (!idval) {
 			console.error("idval is unset in get_value");
-			throw new Error("idval is usnet in get_value");
+			throw new Error("idval is unset in get_value");
 		}
 
 		if (!_hiwire.objects.has(idval)) {
@@ -130,20 +130,25 @@ EM_JS(JsRef, hiwire_object, (), {
 });
 
 EM_JS(JsRef, hiwire_krk_wrapper, (int id), {
-	let jsobj = function() {
+	let krk_func = function() {
 		let argsid = Hiwire.new_value(arguments);
 		let resid = _krk_call_args(id, argsid);
 		Hiwire.decref(argsid);
 		if (resid != 0) {
-			let output = Hiwire.get_value(resid);
-			Hiwire.decref(resid);
+			let output = Hiwire.pop_value(resid);
 			return output;
+		} else {
+			let jsid = _krk_get_currentException();
+			let jsobj = Hiwire.pop_value(jsid);
+			let error = new Error(jsobj[0]);
+			error.__krkval__ = jsobj[1];
+			throw error;
 		}
 	};
-	jsobj.__krk__ = true;
-	jsobj.__id__ = id;
-	Hiwire.registry.register(jsobj, id);
-	return Hiwire.new_value(jsobj);
+	krk_func.__krk__ = true;
+	krk_func.__id__ = id;
+	Hiwire.registry.register(krk_func, id);
+	return Hiwire.new_value(krk_func);
 });
 
 EM_JS(int, hiwire_out_krk, (JsRef idval), {
@@ -215,12 +220,8 @@ EM_JS(char *, hiwire_to_str, (JsRef idobj), {
 	return heapObj;
 });
 
-EM_JS(JsRef, hiwire_error_name, (), {
-	return Hiwire.new_value(Hiwire.exception.name);
-});
-
-EM_JS(JsRef, hiwire_error_message, (), {
-	return Hiwire.new_value(Hiwire.exception.message);
+EM_JS(JsRef, hiwire_get_error, (), {
+	return Hiwire.new_value(Hiwire.exception);
 });
 
 
@@ -410,6 +411,32 @@ static KrkValue fromJs(JsRef ref, JsRef this_) {
 	return OBJECT_VAL(outVal);
 }
 
+static JsRef make_proxy(KrkValue val) {
+	KrkValue id;
+	if (krk_tableGet(AS_DICT(_objToId), val, &id)) {
+		/* Already exists, increment */
+		KrkValue objList;
+		krk_tableGet(AS_DICT(_objects), id, &objList);
+		AS_LIST(objList)->values[1] = INTEGER_VAL(AS_INTEGER(AS_LIST(objList)->values[1])+1);
+		/* return id */
+	} else {
+		/* Make a new one */
+		KrkValue garbage;
+		while (krk_tableGet(AS_DICT(_objects), INTEGER_VAL(counter), &garbage)) {
+			counter++;
+		}
+		id = INTEGER_VAL(counter);
+
+		krk_push(krk_list_of(2,(KrkValue[]){ val, INTEGER_VAL(1)},0));
+		krk_tableSet(AS_DICT(_objects), id, krk_peek(0));
+		krk_pop();
+		krk_tableSet(AS_DICT(_objToId), val, id);
+	}
+
+	/* Now we need to wrap the value */
+	return hiwire_krk_wrapper(AS_INTEGER(id));
+}
+
 static JsRef fromKrk(KrkValue val) {
 	if (IS_JSObject(val)) {
 		JsRef out = AS_JSObject(val)->js;
@@ -438,29 +465,7 @@ static JsRef fromKrk(KrkValue val) {
 		}
 		return array;
 	} else if (IS_function(val) || IS_method(val)) {
-		KrkValue id;
-		if (krk_tableGet(AS_DICT(_objToId), val, &id)) {
-			/* Already exists, increment */
-			KrkValue objList;
-			krk_tableGet(AS_DICT(_objects), id, &objList);
-			AS_LIST(objList)->values[1] = INTEGER_VAL(AS_INTEGER(AS_LIST(objList)->values[1])+1);
-			/* return id */
-		} else {
-			/* Make a new one */
-			KrkValue garbage;
-			while (krk_tableGet(AS_DICT(_objects), INTEGER_VAL(counter), &garbage)) {
-				counter++;
-			}
-			id = INTEGER_VAL(counter);
-
-			krk_push(krk_list_of(2,(KrkValue[]){ val, INTEGER_VAL(1)},0));
-			krk_tableSet(AS_DICT(_objects), id, krk_peek(0));
-			krk_pop();
-			krk_tableSet(AS_DICT(_objToId), val, id);
-		}
-
-		/* Now we need to wrap the value */
-		return hiwire_krk_wrapper(AS_INTEGER(id));
+		return make_proxy(val);
 	} else {
 		krk_runtimeError(vm.exceptions->typeError, "Unable to convert '%s' to JSObject\n", krk_typeName(val));
 		return 0;
@@ -564,20 +569,44 @@ KRK_Method(JSObject,__call__) {
 	hiwire_decref(args);
 
 	if (result == 0) {
-		KrkValue name = fromJs(hiwire_error_name(), 0);
-		KrkValue msg  = fromJs(hiwire_error_message(), 0);
-
-		if (!IS_STRING(name) || !IS_STRING(msg))
-			return krk_runtimeError(vm.exceptions->typeError, "JS exception");
-
-		/* Try to map */
-		if (!strcmp(AS_CSTRING(name), "TypeError")) {
-			return krk_runtimeError(vm.exceptions->typeError, "%s", AS_CSTRING(msg));
-		} else if (!strcmp(AS_CSTRING(name), "ReferenceError")) {
-			return krk_runtimeError(vm.exceptions->nameError, "%s", AS_CSTRING(msg));
+		JsRef    excp = hiwire_get_error();
+		JsRef    maybe_krk = obj_getattr(excp, "__krkval__");
+		if (maybe_krk) {
+			hiwire_decref(excp);
+			krk_currentThread.currentException = fromJs(maybe_krk,0);
+			krk_currentThread.flags |= KRK_THREAD_HAS_EXCEPTION;
 		} else {
-			return krk_runtimeError(vm.exceptions->valueError, "%s", AS_CSTRING(msg));
+			JsRef name = obj_getattr(excp,"name");
+			JsRef msg  = obj_getattr(excp,"message");
+			hiwire_decref(excp);
+			char * _name, * _msg;
+
+			if (name) {
+				_name = hiwire_to_str(name);
+				hiwire_decref(name);
+			} else {
+				_name = strdup("(unnamed)");
+			}
+
+			if (msg) {
+				_msg = hiwire_to_str(msg);
+				hiwire_decref(msg);
+			} else {
+				_msg = strdup("");
+			}
+
+			if (!strcmp(_name, "TypeError")) {
+				krk_runtimeError(vm.exceptions->typeError, "%s", _msg);
+			} else if (!strcmp(_name, "ReferenceError")) {
+				krk_runtimeError(vm.exceptions->nameError, "%s", _msg);
+			} else {
+				krk_runtimeError(vm.exceptions->valueError, "%s: %s", _name, _msg);
+			}
+
+			free(_name);
+			free(_msg);
 		}
+		return NONE_VAL();
 	}
 
 	return fromJs(result,0);
@@ -647,10 +676,37 @@ EMSCRIPTEN_KEEPALIVE JsRef krk_call_args(int krkindex, JsRef jsargsindex) {
 		for (int i = 0; i < num_args; ++i) {
 			krk_push(fromJs(hiwire_args_get(jsargsindex, i), 0));
 		}
-		return fromKrk(krk_callStack(num_args));
+		KrkValue result = krk_callStack(num_args);
+		if (unlikely(krk_currentThread.flags & KRK_THREAD_HAS_EXCEPTION)) {
+			return 0;
+		}
+		return fromKrk(result);
 	}
 
 	return 0;
+}
+
+EMSCRIPTEN_KEEPALIVE JsRef krk_get_currentException(void) {
+	/* Unset exception */
+	krk_currentThread.flags &= ~(KRK_THREAD_HAS_EXCEPTION);
+	/* Repr it */
+	KrkClass * type = krk_getType(krk_currentThread.currentException);
+	KrkValue result = NONE_VAL();
+	if (type->_reprer) {
+		krk_push(krk_currentThread.currentException);
+		result = krk_callDirect(type->_reprer, 1);
+	} else if (type->_tostr) {
+		krk_push(krk_currentThread.currentException);
+		result = krk_callDirect(type->_tostr, 1);
+	}
+	JsRef arr  = JsArray_New();
+	JsRef desc = hiwire_string_utf8(IS_STRING(result) ? AS_CSTRING(result): "(unrepresentable)");
+	JsArray_Push(arr, desc);
+	hiwire_decref(desc);
+	JsRef excp = make_proxy(krk_currentThread.currentException);
+	JsArray_Push(arr, excp);
+	hiwire_decref(excp);
+	return arr;
 }
 
 

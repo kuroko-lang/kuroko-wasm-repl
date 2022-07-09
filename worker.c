@@ -190,7 +190,6 @@ void krk_run_worker(char * data, int size) {
 		while (1) {
 			report_input(">>> ");
 			char * allData = get_line();
-			fprintf(stdout, ">>> %s\n", allData);
 
 			if (!strcmp(allData, "exit()") || !strcmp(allData, "quit()") ||
 				!strcmp(allData, "exit") || !strcmp(allData, "quit")) {

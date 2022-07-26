@@ -26,7 +26,8 @@ FINALLINK = -g4 --source-map-base 'http://localhost:8080/' -lidbfs.js
 # so unfortunately this isn't going to work in a lot of cases.
 ifeq (1,${ENABLE_THREADS})
     EMCFLAGS += -pthread
-    CFLAGS += -DENABLE_THREADING
+else
+    CFLAGS += -DKRK_DISABLE_THREADS
 endif
 
 all: index.js ${MODS} res/init.krk res/baz.krk kuroko.js

@@ -46,17 +46,16 @@ int main() {
 
 	/* Set up the interpreter session */
 	krk_startModule("__main__");
-	krk_attachNamedValue(&krk_currentThread.module->fields,"__doc__", NONE_VAL());
 
 	return 0;
 }
 
 /**
  * This is exposed to JavaScript and is how we implement the repl.
- * Interprets a snippet of code and returns the last thing popped
- * from the stack, much like in the regular repl. If that thing
- * is not None, call repr on it to get a printable version and
- * return that to the JavaScript caller for processing.
+ * Compile and interpret an input. If the input is an expression,
+ * its value is returned. If that return value is not None, it
+ * is assigned to '__builtins__._', repred, and returned to JS
+ * as a nil-terminated string.
  */
 char * krk_call(char * src) {
 	krk_resetStack();

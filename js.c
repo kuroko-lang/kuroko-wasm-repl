@@ -472,7 +472,7 @@ static JsRef fromKrk(KrkValue val) {
 	}
 }
 
-KRK_Method(JSObject,__init__) {
+KRK_StaticMethod(JSObject,__new__) {
 	if (argc == 1) {
 		return fromJs(hiwire_object(), 0);
 	} else {
@@ -832,7 +832,7 @@ void init_jsModule(void) {
 	JSObject->allocSize = sizeof(struct JSObject);
 	JSObject->_ongcsweep = _jsobject_ongcsweep;
 
-	BIND_METHOD(JSObject,__init__);
+	BIND_STATICMETHOD(JSObject,__new__);
 	BIND_METHOD(JSObject,__repr__);
 	BIND_METHOD(JSObject,__str__);
 	BIND_METHOD(JSObject,__getattr__);
